@@ -2,6 +2,8 @@ package com.employee.management.backend.model;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
+import java.util.ArrayList;
+import java.util.List;
 
 @Entity
 @Table(name = "employees")
@@ -43,6 +45,15 @@ public class Employee {
 
     @OneToOne(mappedBy = "employee", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
     private DocumentDetails documentDetails;
+
+    @OneToMany(mappedBy = "employee", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+    private List<LeaveRequest> leaveRequests = new ArrayList<>();
+
+    @OneToMany(mappedBy = "employee", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+    private List<LeaveBalance> leaveBalances = new ArrayList<>();
+
+    @OneToMany(mappedBy = "employee", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+    private List<LeaveHistory> leaveHistory = new ArrayList<>();
 
     public Long getEmpId() {
         return empId;
@@ -202,5 +213,29 @@ public class Employee {
 
     public void setDocumentDetails(DocumentDetails documentDetails) {
         this.documentDetails = documentDetails;
+    }
+
+    public List<LeaveRequest> getLeaveRequests() {
+        return leaveRequests;
+    }
+
+    public void setLeaveRequests(List<LeaveRequest> leaveRequests) {
+        this.leaveRequests = leaveRequests;
+    }
+
+    public List<LeaveBalance> getLeaveBalances() {
+        return leaveBalances;
+    }
+
+    public void setLeaveBalances(List<LeaveBalance> leaveBalances) {
+        this.leaveBalances = leaveBalances;
+    }
+
+    public List<LeaveHistory> getLeaveHistory() {
+        return leaveHistory;
+    }
+
+    public void setLeaveHistory(List<LeaveHistory> leaveHistory) {
+        this.leaveHistory = leaveHistory;
     }
 }
