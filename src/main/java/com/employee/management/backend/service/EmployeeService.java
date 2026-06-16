@@ -1,8 +1,8 @@
 package com.employee.management.backend.service;
 
-import com.employee.management.backend.model.Employee;
-
 import java.util.List;
+
+import com.employee.management.backend.Entity.Employee;
 
 public interface EmployeeService {
     List<Employee> findAllEmployees();

@@ -1,7 +1,7 @@
 package com.employee.management.backend.controller;
 
-import com.employee.management.backend.model.Attendance;
-import com.employee.management.backend.model.Employee;
+import com.employee.management.backend.Entity.Attendance;
+import com.employee.management.backend.Entity.Employee;
 import com.employee.management.backend.repository.AttendanceRepository;
 import com.employee.management.backend.repository.EmployeeRepository;
 import org.springframework.http.ResponseEntity;

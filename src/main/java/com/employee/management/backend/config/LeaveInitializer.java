@@ -1,7 +1,7 @@
 package com.employee.management.backend.config;
 
-import com.employee.management.backend.model.Employee;
-import com.employee.management.backend.model.LeaveBalance;
+import com.employee.management.backend.Entity.Employee;
+import com.employee.management.backend.Entity.LeaveBalance;
 import com.employee.management.backend.repository.EmployeeRepository;
 import com.employee.management.backend.repository.LeaveBalanceRepository;
 import org.springframework.boot.CommandLineRunner;

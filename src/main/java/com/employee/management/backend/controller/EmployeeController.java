@@ -1,6 +1,6 @@
 package com.employee.management.backend.controller;
 
-import com.employee.management.backend.model.Employee;
+import com.employee.management.backend.Entity.Employee;
 import com.employee.management.backend.service.EmployeeService;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import org.springframework.http.ResponseEntity;

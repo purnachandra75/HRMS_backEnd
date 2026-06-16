@@ -1,4 +1,4 @@
-package com.employee.management.backend.model;
+package com.employee.management.backend.Entity;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;

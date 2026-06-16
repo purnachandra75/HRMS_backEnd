@@ -1,13 +1,13 @@
 package com.employee.management.backend.service;
 
+import com.employee.management.backend.Entity.Employee;
+import com.employee.management.backend.Entity.LeaveBalance;
+import com.employee.management.backend.Entity.LeaveHistory;
+import com.employee.management.backend.Entity.LeaveRequest;
 import com.employee.management.backend.dto.CreateLeaveRequestDTO;
 import com.employee.management.backend.dto.LeaveRequestDTO;
 import com.employee.management.backend.dto.UpdateLeaveRequestStatusDTO;
 import com.employee.management.backend.exception.ResourceNotFoundException;
-import com.employee.management.backend.model.Employee;
-import com.employee.management.backend.model.LeaveBalance;
-import com.employee.management.backend.model.LeaveHistory;
-import com.employee.management.backend.model.LeaveRequest;
 import com.employee.management.backend.repository.EmployeeRepository;
 import com.employee.management.backend.repository.LeaveBalanceRepository;
 import com.employee.management.backend.repository.LeaveHistoryRepository;

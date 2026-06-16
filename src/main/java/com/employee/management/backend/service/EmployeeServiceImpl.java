@@ -1,13 +1,13 @@
 package com.employee.management.backend.service;
 
+import com.employee.management.backend.Entity.AddressDetails;
+import com.employee.management.backend.Entity.DocumentDetails;
+import com.employee.management.backend.Entity.EducationDetails;
+import com.employee.management.backend.Entity.EmergencyContact;
+import com.employee.management.backend.Entity.Employee;
+import com.employee.management.backend.Entity.JobDetails;
+import com.employee.management.backend.Entity.SalaryDetails;
 import com.employee.management.backend.exception.ResourceNotFoundException;
-import com.employee.management.backend.model.AddressDetails;
-import com.employee.management.backend.model.DocumentDetails;
-import com.employee.management.backend.model.EducationDetails;
-import com.employee.management.backend.model.EmergencyContact;
-import com.employee.management.backend.model.Employee;
-import com.employee.management.backend.model.JobDetails;
-import com.employee.management.backend.model.SalaryDetails;
 import com.employee.management.backend.repository.EmployeeRepository;
 import jakarta.transaction.Transactional;
 import org.springframework.stereotype.Service;
@@ -71,7 +71,7 @@ public class EmployeeServiceImpl implements EmployeeService {
         existing.setBloodGroup(incoming.getBloodGroup());
         existing.setMaritalStatus(incoming.getMaritalStatus());
         existing.setNationality(incoming.getNationality());
-        existing.setPassword(incoming.getPassword());
+       // existing.setPassword(incoming.getPassword());
         existing.setRole(incoming.getRole());
         existing.setProfilePhoto(incoming.getProfilePhoto());
 
