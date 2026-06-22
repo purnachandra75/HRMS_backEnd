@@ -2,6 +2,7 @@ package com.employee.management.backend.service;
 
 import com.employee.management.backend.Entity.Employee;
 import com.employee.management.backend.Entity.LeaveRequest;
+import com.employee.management.backend.Entity.Payroll;
 import com.employee.management.backend.Entity.SalaryDetails;
 import com.employee.management.backend.dto.PayrollEmployeeRequestDTO;
 import com.employee.management.backend.dto.PayrollEmployeeResponseDTO;
@@ -9,6 +10,7 @@ import com.employee.management.backend.dto.PayrollProcessRequestDTO;
 import com.employee.management.backend.dto.PayrollProcessResponseDTO;
 import com.employee.management.backend.repository.EmployeeRepository;
 import com.employee.management.backend.repository.LeaveRequestRepository;
+import com.employee.management.backend.repository.PayrollRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -23,14 +25,17 @@ public class PayrollService {
 
     private final EmployeeRepository employeeRepository;
     private final LeaveRequestRepository leaveRequestRepository;
+    private final PayrollRepository payrollRepository;
 
     public PayrollService(EmployeeRepository employeeRepository,
-                          LeaveRequestRepository leaveRequestRepository) {
+                          LeaveRequestRepository leaveRequestRepository,
+                          PayrollRepository payrollRepository) {
         this.employeeRepository = employeeRepository;
         this.leaveRequestRepository = leaveRequestRepository;
+        this.payrollRepository = payrollRepository;
     }
 
-    @Transactional(readOnly = true)
+    @Transactional
     public PayrollProcessResponseDTO processPayroll(PayrollProcessRequestDTO request) {
         YearMonth payrollMonth = resolvePayrollMonth(request);
         PayrollProcessResponseDTO response = new PayrollProcessResponseDTO();
@@ -55,6 +60,49 @@ public class PayrollService {
                 .sum()));
 
         return response;
+    }
+
+    @Transactional(readOnly = true)
+    public PayrollProcessResponseDTO getProcessedPayrollByMonthAndYear(Integer month, Integer year) {
+        PayrollProcessResponseDTO response = new PayrollProcessResponseDTO();
+        response.setMonth(month);
+        response.setYear(year);
+
+        List<Payroll> payrolls = payrollRepository.findByMonthAndYearOrderByEmployeeIdAsc(month, year);
+        for (Payroll payroll : payrolls) {
+            response.getEmployees().add(convertPayrollToResponse(payroll));
+        }
+
+        response.setTotalEmployees(response.getEmployees().size());
+        response.setTotalGrossSalary(round(response.getEmployees().stream()
+                .mapToDouble(employee -> valueOrZero(employee.getMonthlyGrossSalary()))
+                .sum()));
+        response.setTotalLeaveDeduction(round(response.getEmployees().stream()
+                .mapToDouble(employee -> valueOrZero(employee.getLeaveDeduction()))
+                .sum()));
+        response.setTotalNetSalary(round(response.getEmployees().stream()
+                .mapToDouble(employee -> valueOrZero(employee.getNetSalary()))
+                .sum()));
+
+        return response;
+    }
+
+    @Transactional
+    public PayrollEmployeeResponseDTO updatePayrollCreditStatus(Long payrollId,
+                                                                Long employeeId,
+                                                                Integer month,
+                                                                Integer year,
+                                                                String status) {
+        if (status == null || status.trim().isEmpty()) {
+            throw new RuntimeException("Status is required");
+        }
+
+        Payroll payroll = payrollRepository.findById(payrollId)
+                .orElseGet(() -> findPayrollByEmployeeMonthAndYear(employeeId, month, year));
+
+        payroll.setCreditStatus(status.trim());
+        Payroll updatedPayroll = payrollRepository.save(payroll);
+        return convertPayrollToResponse(updatedPayroll);
     }
 
     private PayrollEmployeeResponseDTO processEmployeePayroll(PayrollEmployeeRequestDTO requestedEmployee,
@@ -98,10 +146,23 @@ public class PayrollService {
         int paidLeaveDays = getApprovedLeaveDays(employee.getEmpId(), payrollMonth, false);
         double dailySalary = monthlyGrossSalary / payrollMonth.lengthOfMonth();
         double leaveDeduction = dailySalary * unpaidLeaveDays;
-        double netSalary = monthlyGrossSalary - leaveDeduction;
+        double netSalary = Math.max(0, monthlyGrossSalary - leaveDeduction);
+        Payroll payroll = savePayroll(employee, salaryDetails, payrollMonth, unpaidLeaveDays, round(netSalary));
 
         response.setStatus("PROCESSED");
         response.setMessage("Payroll processed successfully");
+        response.setPayrollId(payroll.getId());
+        response.setDateOfJoining(payroll.getDateOfJoining());
+        response.setLop(payroll.getLop());
+        response.setSalary(payroll.getSalary());
+        response.setPanNumber(payroll.getPanNumber());
+        response.setAccountNumber(payroll.getAccountNumber());
+        response.setIfsc(payroll.getIfsc());
+        response.setUan(payroll.getUan());
+        response.setPf(payroll.getPf());
+        response.setCreditStatus(payroll.getCreditStatus());
+        response.setMonth(payroll.getMonth());
+        response.setYear(payroll.getYear());
         response.setBasicSalary(round(basicSalary));
         response.setBonus(round(bonus));
         response.setCtc(round(ctc));
@@ -112,6 +173,90 @@ public class PayrollService {
         response.setNetSalary(round(netSalary));
 
         return response;
+    }
+
+    private Payroll savePayroll(Employee employee,
+                                SalaryDetails salaryDetails,
+                                YearMonth payrollMonth,
+                                int lop,
+                                double salary) {
+        Payroll payroll = payrollRepository
+                .findByEmployeeIdAndMonthAndYear(employee.getEmpId(), payrollMonth.getMonthValue(), payrollMonth.getYear())
+                .orElseGet(Payroll::new);
+
+        payroll.setEmployeeId(employee.getEmpId());
+        payroll.setEmployeeName(buildEmployeeName(employee));
+        payroll.setDateOfJoining(employee.getJobDetails() == null ? null : employee.getJobDetails().getDateOfJoining());
+        payroll.setLop(lop);
+        payroll.setSalary(salary);
+        payroll.setPanNumber(salaryDetails.getPanNumber());
+        payroll.setAccountNumber(salaryDetails.getAccountNumber());
+        payroll.setIfsc(salaryDetails.getIfscCode());
+        payroll.setUan(salaryDetails.getUanNumber());
+        payroll.setPf(salaryDetails.getPfNumber());
+        if (payroll.getCreditStatus() == null || payroll.getCreditStatus().trim().isEmpty()) {
+            payroll.setCreditStatus("NON_CREDITED");
+        }
+        payroll.setMonth(payrollMonth.getMonthValue());
+        payroll.setYear(payrollMonth.getYear());
+
+        return payrollRepository.save(payroll);
+    }
+
+    private PayrollEmployeeResponseDTO convertPayrollToResponse(Payroll payroll) {
+        PayrollEmployeeResponseDTO response = new PayrollEmployeeResponseDTO();
+        response.setPayrollId(payroll.getId());
+        response.setEmployeeId(payroll.getEmployeeId());
+        response.setEmployeeName(payroll.getEmployeeName());
+        response.setRequestedEmployeeName(payroll.getEmployeeName());
+        response.setStatus("PROCESSED");
+        response.setMessage("Payroll data fetched from database");
+        response.setDateOfJoining(payroll.getDateOfJoining());
+        response.setLop(payroll.getLop());
+        response.setSalary(payroll.getSalary());
+        response.setNetSalary(payroll.getSalary());
+        response.setPanNumber(payroll.getPanNumber());
+        response.setAccountNumber(payroll.getAccountNumber());
+        response.setIfsc(payroll.getIfsc());
+        response.setUan(payroll.getUan());
+        response.setPf(payroll.getPf());
+        response.setCreditStatus(payroll.getCreditStatus());
+        response.setMonth(payroll.getMonth());
+        response.setYear(payroll.getYear());
+
+        Employee employee = employeeRepository.findById(payroll.getEmployeeId()).orElse(null);
+        if (employee != null && employee.getSalaryDetails() != null) {
+            SalaryDetails salaryDetails = employee.getSalaryDetails();
+            YearMonth payrollMonth = YearMonth.of(payroll.getYear(), payroll.getMonth());
+            double basicSalary = parseAmount(salaryDetails.getBasicSalary());
+            double bonus = parseAmount(salaryDetails.getBonus());
+            double ctc = parseAmount(salaryDetails.getCtc());
+            double monthlyGrossSalary = ctc > 0 ? ctc / 12 : basicSalary + bonus;
+            int unpaidLeaveDays = getApprovedLeaveDays(employee.getEmpId(), payrollMonth, true);
+            int paidLeaveDays = getApprovedLeaveDays(employee.getEmpId(), payrollMonth, false);
+            double dailySalary = monthlyGrossSalary / payrollMonth.lengthOfMonth();
+            double leaveDeduction = dailySalary * unpaidLeaveDays;
+
+            response.setBasicSalary(round(basicSalary));
+            response.setBonus(round(bonus));
+            response.setCtc(round(ctc));
+            response.setMonthlyGrossSalary(round(monthlyGrossSalary));
+            response.setPaidLeaveDays(paidLeaveDays);
+            response.setUnpaidLeaveDays(unpaidLeaveDays);
+            response.setLeaveDeduction(round(leaveDeduction));
+        } else {
+            response.setMonthlyGrossSalary(payroll.getSalary());
+            response.setLeaveDeduction(0.0);
+        }
+        return response;
+    }
+
+    private Payroll findPayrollByEmployeeMonthAndYear(Long employeeId, Integer month, Integer year) {
+        if (employeeId == null || month == null || year == null) {
+            throw new RuntimeException("Payroll record not found");
+        }
+        return payrollRepository.findByEmployeeIdAndMonthAndYear(employeeId, month, year)
+                .orElseThrow(() -> new RuntimeException("Payroll record not found"));
     }
 
     private YearMonth resolvePayrollMonth(PayrollProcessRequestDTO request) {
