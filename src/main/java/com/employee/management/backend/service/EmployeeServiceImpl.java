@@ -9,10 +9,16 @@ import com.employee.management.backend.Entity.JobDetails;
 import com.employee.management.backend.Entity.SalaryDetails;
 import com.employee.management.backend.exception.ResourceNotFoundException;
 import com.employee.management.backend.repository.EmployeeRepository;
+import com.employee.management.backend.dto.DocumentFile;
 import jakarta.transaction.Transactional;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import org.springframework.web.multipart.MultipartFile;
 
 @Service
 @Transactional
@@ -23,9 +29,60 @@ public class EmployeeServiceImpl implements EmployeeService {
         this.employeeRepository = employeeRepository;
     }
 
-    @Override 
-    public List<Employee> findAllEmployees() {
-        return employeeRepository.findAll();
+    @Override
+    public Page<Employee> findAllEmployees(Pageable pageable) {
+        if (pageable == null) {
+            pageable = PageRequest.of(0, 10);
+        }
+
+        int pageSize = Math.max(pageable.getPageSize(), 1);
+        int requestedPage = Math.max(pageable.getPageNumber(), 0);
+        long totalElements = employeeRepository.count();
+
+        if (totalElements == 0) {
+            return Page.empty(pageable);
+        }
+
+        int maxPageIndex = (int) Math.max(0, Math.ceil((double) totalElements / pageSize) - 1);
+        int safePageNumber = Math.min(requestedPage, maxPageIndex);
+        Pageable safePageable = PageRequest.of(safePageNumber, pageSize, pageable.getSort());
+        return employeeRepository.findAll(safePageable);
+    }
+
+    @Override
+    public Page<Employee> searchEmployees(String search, Pageable pageable) {
+        if (pageable == null) {
+            pageable = PageRequest.of(0, 10);
+        }
+
+        String normalizedSearch = search == null ? "" : search.trim();
+        if (normalizedSearch.isEmpty()) {
+            return findAllEmployees(PageRequest.of(Math.max(pageable.getPageNumber(), 0), Math.max(pageable.getPageSize(), 1), pageable.getSort()));
+        }
+
+        if (isNumeric(normalizedSearch)) {
+            Long employeeId = Long.parseLong(normalizedSearch);
+            final int safePageNumber = Math.max(pageable.getPageNumber(), 0);
+            final int safePageSize = Math.max(pageable.getPageSize(), 1);
+            final var sort = pageable.getSort();
+            final PageRequest pageRequest = PageRequest.of(safePageNumber, safePageSize, sort);
+            final PageRequest singleResultRequest = PageRequest.of(0, 1, sort);
+            return employeeRepository.findById(employeeId)
+                    .map(employee -> new PageImpl<Employee>(List.of(employee), singleResultRequest, 1))
+                    .orElseGet(() -> new PageImpl<Employee>(List.of(), pageRequest, 0));
+        }
+
+        String searchPattern = "%" + normalizedSearch.toLowerCase() + "%";
+        return employeeRepository.searchEmployees(searchPattern, PageRequest.of(Math.max(pageable.getPageNumber(), 0), Math.max(pageable.getPageSize(), 1), pageable.getSort()));
+    }
+
+    private boolean isNumeric(String value) {
+        try {
+            Long.parseLong(value);
+            return true;
+        } catch (NumberFormatException ex) {
+            return false;
+        }
     }
 
     @Override
@@ -58,6 +115,91 @@ public class EmployeeServiceImpl implements EmployeeService {
     public Employee findByEmail(String email) {
         return employeeRepository.findByEmail(email)
                 .orElseThrow(() -> new ResourceNotFoundException("Employee", "email", email));
+    }
+
+    @Override
+    public void uploadEmployeeDocument(Long empId, String docType, MultipartFile file) {
+        Employee employee = findById(empId);
+        DocumentDetails details = employee.getDocumentDetails();
+        if (details == null) {
+            details = new DocumentDetails();
+            details.setEmployee(employee);
+            employee.setDocumentDetails(details);
+        }
+
+        try {
+            byte[] data = file.getBytes();
+            switch (docType.toLowerCase()) {
+                case "resume":
+                    details.setResumeUploadData(data);
+                    details.setResumeUploadName(file.getOriginalFilename());
+                    details.setResumeUploadContentType(file.getContentType());
+                    break;
+                case "idproof":
+                    details.setIdProofUploadData(data);
+                    details.setIdProofUploadName(file.getOriginalFilename());
+                    details.setIdProofUploadContentType(file.getContentType());
+                    break;
+                case "addressproof":
+                    details.setAddressProofUploadData(data);
+                    details.setAddressProofUploadName(file.getOriginalFilename());
+                    details.setAddressProofUploadContentType(file.getContentType());
+                    break;
+                case "education":
+                    details.setEducationalCertificatesData(data);
+                    details.setEducationalCertificatesName(file.getOriginalFilename());
+                    details.setEducationalCertificatesContentType(file.getContentType());
+                    break;
+                case "experience":
+                    details.setExperienceCertificatesData(data);
+                    details.setExperienceCertificatesName(file.getOriginalFilename());
+                    details.setExperienceCertificatesContentType(file.getContentType());
+                    break;
+                case "passport":
+                    details.setPassportPhotoData(data);
+                    details.setPassportPhotoName(file.getOriginalFilename());
+                    details.setPassportPhotoContentType(file.getContentType());
+                    break;
+                default:
+                    throw new IllegalArgumentException("Unsupported document type: " + docType);
+            }
+            employeeRepository.save(employee);
+        } catch (Exception ex) {
+            throw new RuntimeException("Could not store document file", ex);
+        }
+    }
+
+    @Override
+    public DocumentFile getEmployeeDocument(Long empId, String docType) {
+        Employee employee = findById(empId);
+        DocumentDetails details = employee.getDocumentDetails();
+        if (details == null) {
+            throw new ResourceNotFoundException("DocumentDetails", "empId", empId);
+        }
+
+        switch (docType.toLowerCase()) {
+            case "resume":
+                return toDocumentFile(details.getResumeUploadData(), details.getResumeUploadName(), details.getResumeUploadContentType());
+            case "idproof":
+                return toDocumentFile(details.getIdProofUploadData(), details.getIdProofUploadName(), details.getIdProofUploadContentType());
+            case "addressproof":
+                return toDocumentFile(details.getAddressProofUploadData(), details.getAddressProofUploadName(), details.getAddressProofUploadContentType());
+            case "education":
+                return toDocumentFile(details.getEducationalCertificatesData(), details.getEducationalCertificatesName(), details.getEducationalCertificatesContentType());
+            case "experience":
+                return toDocumentFile(details.getExperienceCertificatesData(), details.getExperienceCertificatesName(), details.getExperienceCertificatesContentType());
+            case "passport":
+                return toDocumentFile(details.getPassportPhotoData(), details.getPassportPhotoName(), details.getPassportPhotoContentType());
+            default:
+                throw new IllegalArgumentException("Unsupported document type: " + docType);
+        }
+    }
+
+    private DocumentFile toDocumentFile(byte[] data, String fileName, String contentType) {
+        if (data == null || fileName == null) {
+            throw new ResourceNotFoundException("Document file", "name", fileName);
+        }
+        return new DocumentFile(fileName, contentType == null ? "application/octet-stream" : contentType, data.length, data);
     }
 
     private void applyUpdates(Employee existing, Employee incoming) {

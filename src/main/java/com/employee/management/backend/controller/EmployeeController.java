@@ -1,15 +1,19 @@
 package com.employee.management.backend.controller;
 
 import com.employee.management.backend.Entity.Employee;
+import com.employee.management.backend.dto.DocumentFile;
 import com.employee.management.backend.service.EmployeeService;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-
-import java.util.List;
+import org.springframework.web.multipart.MultipartFile;
 
 @RestController
-@RequestMapping("/api/employees")
+@RequestMapping({"/api/employees", "/api/employee"})
 public class EmployeeController {
     private final EmployeeService employeeService;
 
@@ -17,9 +21,15 @@ public class EmployeeController {
         this.employeeService = employeeService;
     }
 
-    @GetMapping
-    public List<Employee> getAllEmployees() {
-        return employeeService.findAllEmployees();
+    @GetMapping({"", "/getemployee"})
+    public Page<Employee> getAllEmployees(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(required = false) String search) {
+        int normalizedPage = Math.max(page, 0);
+        int normalizedSize = Math.max(size, 1);
+        String normalizedSearch = (search == null || search.trim().isEmpty()) ? null : search.trim();
+        return employeeService.searchEmployees(normalizedSearch, PageRequest.of(normalizedPage, normalizedSize));
     }
 
     @GetMapping("/{empId}")
@@ -159,5 +169,26 @@ public class EmployeeController {
     public ResponseEntity<Void> deleteEmployee(@PathVariable Long empId) {
         employeeService.deleteEmployee(empId);
         return ResponseEntity.noContent().build();
+    }
+
+    @PostMapping(path = {"/{empId}/documents/{docType}", "/{empId}/document/{docType}"}, consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<Void> uploadEmployeeDocument(
+            @PathVariable Long empId,
+            @PathVariable String docType,
+            @RequestParam("file") MultipartFile file) {
+        employeeService.uploadEmployeeDocument(empId, docType, file);
+        return ResponseEntity.ok().build();
+    }
+
+    @GetMapping(path = {"/{empId}/documents/{docType}", "/{empId}/document/{docType}"})
+    public ResponseEntity<byte[]> downloadEmployeeDocument(
+            @PathVariable Long empId,
+            @PathVariable String docType) {
+        DocumentFile documentFile = employeeService.getEmployeeDocument(empId, docType);
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + documentFile.getFileName() + "\"")
+                .contentType(MediaType.parseMediaType(documentFile.getContentType()))
+                .contentLength(documentFile.getSize())
+                .body(documentFile.getData());
     }
 }

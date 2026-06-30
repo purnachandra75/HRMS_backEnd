@@ -1,11 +1,15 @@
 package com.employee.management.backend.service;
 
-import java.util.List;
-
 import com.employee.management.backend.Entity.Employee;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.web.multipart.MultipartFile;
+import com.employee.management.backend.dto.DocumentFile;
 
 public interface EmployeeService {
-    List<Employee> findAllEmployees();
+    Page<Employee> findAllEmployees(Pageable pageable);
+
+    Page<Employee> searchEmployees(String search, Pageable pageable);
 
     Employee findById(Long empId);
 
@@ -16,4 +20,8 @@ public interface EmployeeService {
     void deleteEmployee(Long empId);
 
     Employee findByEmail(String email);
+
+    void uploadEmployeeDocument(Long empId, String docType, MultipartFile file);
+
+    DocumentFile getEmployeeDocument(Long empId, String docType);
 }
