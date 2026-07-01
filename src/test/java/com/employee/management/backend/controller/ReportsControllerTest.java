@@ -1,6 +1,7 @@
 //package com.employee.management.backend.controller;
 //
 //import com.employee.management.backend.Entity.Employee;
+//import com.employee.management.backend.Entity.JobDetails;
 //import com.employee.management.backend.service.EmployeeService;
 //import org.junit.jupiter.api.Test;
 //import org.mockito.ArgumentCaptor;
@@ -24,8 +25,8 @@
 //import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 //import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 //
-//@WebMvcTest(EmployeeController.class)
-//class EmployeeControllerPaginationTest {
+//@WebMvcTest(ReportsController.class)
+//class ReportsControllerTest {
 //
 //    @Autowired
 //    private MockMvc mockMvc;
@@ -34,35 +35,38 @@
 //    private EmployeeService employeeService;
 //
 //    @Test
-//    void shouldFilterEmployeesByDepartmentAndStatus() throws Exception {
+//    void shouldReturnFlattenedEmployeeReportFields() throws Exception {
 //        Employee employee = new Employee();
-//        employee.setEmpId(1L);
-//        employee.setFirstName("Alice");
-//        employee.setLastName("Smith");
-//        employee.setEmail("alice@example.com");
-//        employee.setRole("employee");
+//        employee.setEmpId(10L);
+//        employee.setFirstName("Asha");
+//        employee.setLastName("Rao");
+//        employee.setEmail("asha@example.com");
 //
-//        Page<Employee> page = new PageImpl<>(List.of(employee), PageRequest.of(1, 5), 6);
+//        JobDetails jobDetails = new JobDetails();
+//        jobDetails.setDepartment("HR");
+//        jobDetails.setDesignation("Manager");
+//        jobDetails.setEmployeeStatus("active");
+//        employee.setJobDetails(jobDetails);
+//
+//        Page<Employee> page = new PageImpl<>(List.of(employee), PageRequest.of(0, 10), 1);
 //        when(employeeService.searchEmployees(any(), any(), any(), any())).thenReturn(page);
 //
-//        mockMvc.perform(get("/api/employees")
-//                        .param("page", "1")
-//                        .param("size", "5")
+//        mockMvc.perform(get("/api/reports/employees")
+//                        .param("page", "0")
+//                        .param("size", "10")
 //                        .param("department", "HR")
 //                        .param("status", "active")
 //                        .contentType(MediaType.APPLICATION_JSON))
 //                .andExpect(status().isOk())
-//                .andExpect(jsonPath("$.content[0].empId").value(1))
-//                .andExpect(jsonPath("$.content[0].firstName").value("Alice"))
-//                .andExpect(jsonPath("$.totalElements").value(6));
+//                .andExpect(jsonPath("$.content[0].empId").value(10))
+//                .andExpect(jsonPath("$.content[0].fullName").value("Asha Rao"))
+//                .andExpect(jsonPath("$.content[0].department").value("HR"))
+//                .andExpect(jsonPath("$.content[0].status").value("active"));
 //
 //        ArgumentCaptor<String> departmentCaptor = ArgumentCaptor.forClass(String.class);
 //        ArgumentCaptor<String> statusCaptor = ArgumentCaptor.forClass(String.class);
-//        ArgumentCaptor<Pageable> pageableCaptor = ArgumentCaptor.forClass(Pageable.class);
-//        verify(employeeService).searchEmployees(any(), departmentCaptor.capture(), statusCaptor.capture(), pageableCaptor.capture());
+//        verify(employeeService).searchEmployees(any(), departmentCaptor.capture(), statusCaptor.capture(), any(Pageable.class));
 //        assertThat(departmentCaptor.getValue()).isEqualTo("HR");
 //        assertThat(statusCaptor.getValue()).isEqualTo("active");
-//        assertThat(pageableCaptor.getValue().getPageNumber()).isEqualTo(1);
-//        assertThat(pageableCaptor.getValue().getPageSize()).isEqualTo(5);
 //    }
 //}
