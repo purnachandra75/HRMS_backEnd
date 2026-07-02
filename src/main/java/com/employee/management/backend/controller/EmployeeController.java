@@ -27,12 +27,22 @@ public class EmployeeController {
             @RequestParam(defaultValue = "10") int size,
             @RequestParam(required = false) String search,
             @RequestParam(required = false) String department,
-            @RequestParam(required = false) String status) {
+            @RequestParam(required = false) String status,
+            @RequestParam(required = false) String employeeType) {
         int normalizedPage = Math.max(page, 0);
         int normalizedSize = Math.max(size, 1);
         String normalizedSearch = (search == null || search.trim().isEmpty()) ? null : search.trim();
         if (normalizedSearch != null) {
-            return employeeService.searchEmployees(normalizedSearch, PageRequest.of(normalizedPage, normalizedSize));
+            String normalizedDepartment = normalizeFilterValue(department);
+        String normalizedStatus = normalizeFilterValue(status);
+        String normalizedEmployeeType = normalizeFilterValue(employeeType);
+        return employeeService.searchEmployees(
+                normalizedSearch,
+                normalizedDepartment,
+                normalizedStatus,
+                normalizedEmployeeType,
+                PageRequest.of(normalizedPage, normalizedSize)
+        );
         }
         return employeeService.filterEmployees(department, status, PageRequest.of(normalizedPage, normalizedSize));
     }
@@ -49,6 +59,17 @@ public class EmployeeController {
     @GetMapping("/{empId}")
     public ResponseEntity<Employee> getEmployee(@PathVariable Long empId) {
         return ResponseEntity.ok(employeeService.findById(empId));
+    }
+
+    private String normalizeFilterValue(String value) {
+        if (value == null) {
+            return null;
+        }
+        String trimmed = value.trim();
+        if (trimmed.isEmpty() || "all".equalsIgnoreCase(trimmed)) {
+            return null;
+        }
+        return trimmed;
     }
 
     @PostMapping

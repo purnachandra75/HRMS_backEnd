@@ -51,16 +51,25 @@ public class EmployeeServiceImpl implements EmployeeService {
 
     @Override
     public Page<Employee> searchEmployees(String search, Pageable pageable) {
+        return searchEmployees(search, null, null, null, pageable);
+    }
+
+    @Override
+    public Page<Employee> searchEmployees(String search, String department, String status, String employeeType, Pageable pageable) {
         if (pageable == null) {
             pageable = PageRequest.of(0, 10);
         }
 
         String normalizedSearch = search == null ? "" : search.trim();
-        if (normalizedSearch.isEmpty()) {
+        String normalizedDepartment = department == null ? "" : department.trim();
+        String normalizedStatus = status == null ? "" : status.trim();
+        String normalizedEmployeeType = employeeType == null ? "" : employeeType.trim();
+
+        if (normalizedSearch.isEmpty() && normalizedDepartment.isEmpty() && normalizedStatus.isEmpty() && normalizedEmployeeType.isEmpty()) {
             return findAllEmployees(PageRequest.of(Math.max(pageable.getPageNumber(), 0), Math.max(pageable.getPageSize(), 1), pageable.getSort()));
         }
 
-        if (isNumeric(normalizedSearch)) {
+        if (!normalizedSearch.isEmpty() && isNumeric(normalizedSearch)) {
             Long employeeId = Long.parseLong(normalizedSearch);
             final int safePageNumber = Math.max(pageable.getPageNumber(), 0);
             final int safePageSize = Math.max(pageable.getPageSize(), 1);
@@ -72,8 +81,9 @@ public class EmployeeServiceImpl implements EmployeeService {
                     .orElseGet(() -> new PageImpl<Employee>(List.of(), pageRequest, 0));
         }
 
-        String searchPattern = "%" + normalizedSearch.toLowerCase() + "%";
-        return employeeRepository.searchEmployees(searchPattern, PageRequest.of(Math.max(pageable.getPageNumber(), 0), Math.max(pageable.getPageSize(), 1), pageable.getSort()));
+        String searchPattern = normalizedSearch.isEmpty() ? null : "%" + normalizedSearch.toLowerCase() + "%";
+        return employeeRepository.searchEmployees(searchPattern, normalizedDepartment, normalizedStatus, normalizedEmployeeType,
+                PageRequest.of(Math.max(pageable.getPageNumber(), 0), Math.max(pageable.getPageSize(), 1), pageable.getSort()));
     }
 
     @Override
