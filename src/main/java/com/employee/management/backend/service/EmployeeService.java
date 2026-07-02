@@ -11,11 +11,9 @@ public interface EmployeeService {
 
     Page<Employee> searchEmployees(String search, Pageable pageable);
 
-<<<<<<< HEAD
-    Page<Employee> filterEmployees(String department, String status, Pageable pageable);
-=======
     Page<Employee> searchEmployees(String search, String department, String status, String employeeType, Pageable pageable);
->>>>>>> 66e0f715eb692c643a365b43c3a0ce851805ea94
+
+    Page<Employee> filterEmployees(String department, String status, Pageable pageable);
 
     Employee findById(Long empId);
 
