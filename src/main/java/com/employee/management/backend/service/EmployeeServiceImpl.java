@@ -76,6 +76,25 @@ public class EmployeeServiceImpl implements EmployeeService {
         return employeeRepository.searchEmployees(searchPattern, PageRequest.of(Math.max(pageable.getPageNumber(), 0), Math.max(pageable.getPageSize(), 1), pageable.getSort()));
     }
 
+    @Override
+    public Page<Employee> filterEmployees(String department, String status, Pageable pageable) {
+        if (pageable == null) {
+            pageable = PageRequest.of(0, 10);
+        }
+
+        String normalizedDepartment = department == null ? "" : department.trim();
+        String normalizedStatus = status == null ? "" : status.trim();
+        int pageNumber = Math.max(pageable.getPageNumber(), 0);
+        int pageSize = Math.max(pageable.getPageSize(), 1);
+        Pageable safePageable = PageRequest.of(pageNumber, pageSize, pageable.getSort());
+
+        if (normalizedDepartment.isEmpty() && normalizedStatus.isEmpty()) {
+            return findAllEmployees(safePageable);
+        }
+
+        return employeeRepository.filterEmployees(normalizedDepartment, normalizedStatus, safePageable);
+    }
+
     private boolean isNumeric(String value) {
         try {
             Long.parseLong(value);

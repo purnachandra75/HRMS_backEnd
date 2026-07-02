@@ -20,4 +20,11 @@ public interface EmployeeRepository extends JpaRepository<Employee, Long> {
             "LOWER(e.lastName) LIKE :search OR " +
             "LOWER(COALESCE(jd.designation, '')) LIKE :search")
     Page<Employee> searchEmployees(@Param("search") String search, Pageable pageable);
+
+    @Query("SELECT e FROM Employee e LEFT JOIN e.jobDetails jd WHERE " +
+            "(:department = '' OR LOWER(COALESCE(jd.department, '')) LIKE LOWER(CONCAT('%', :department, '%'))) AND " +
+            "(:status = '' OR LOWER(COALESCE(jd.employeeStatus, '')) LIKE LOWER(CONCAT('%', :status, '%')))" )
+    Page<Employee> filterEmployees(@Param("department") String department,
+                                    @Param("status") String status,
+                                    Pageable pageable);
 }

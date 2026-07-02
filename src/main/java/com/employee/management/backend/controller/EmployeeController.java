@@ -25,11 +25,25 @@ public class EmployeeController {
     public Page<Employee> getAllEmployees(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size,
-            @RequestParam(required = false) String search) {
+            @RequestParam(required = false) String search,
+            @RequestParam(required = false) String department,
+            @RequestParam(required = false) String status) {
         int normalizedPage = Math.max(page, 0);
         int normalizedSize = Math.max(size, 1);
         String normalizedSearch = (search == null || search.trim().isEmpty()) ? null : search.trim();
-        return employeeService.searchEmployees(normalizedSearch, PageRequest.of(normalizedPage, normalizedSize));
+        if (normalizedSearch != null) {
+            return employeeService.searchEmployees(normalizedSearch, PageRequest.of(normalizedPage, normalizedSize));
+        }
+        return employeeService.filterEmployees(department, status, PageRequest.of(normalizedPage, normalizedSize));
+    }
+
+    @GetMapping({"/report", "/reports"})
+    public Page<Employee> getEmployeeReport(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(required = false) String department,
+            @RequestParam(required = false) String status) {
+        return employeeService.filterEmployees(department, status, PageRequest.of(Math.max(page, 0), Math.max(size, 1)));
     }
 
     @GetMapping("/{empId}")

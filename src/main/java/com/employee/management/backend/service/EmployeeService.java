@@ -11,6 +11,8 @@ public interface EmployeeService {
 
     Page<Employee> searchEmployees(String search, Pageable pageable);
 
+    Page<Employee> filterEmployees(String department, String status, Pageable pageable);
+
     Employee findById(Long empId);
 
     Employee createEmployee(Employee employee);
