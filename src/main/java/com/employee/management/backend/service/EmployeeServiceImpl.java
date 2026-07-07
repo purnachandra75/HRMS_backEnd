@@ -34,10 +34,9 @@ public class EmployeeServiceImpl implements EmployeeService {
         if (pageable == null) {
             pageable = PageRequest.of(0, 10);
         }
-
         int pageSize = Math.max(pageable.getPageSize(), 1);
         int requestedPage = Math.max(pageable.getPageNumber(), 0);
-        long totalElements = employeeRepository.count();
+        long totalElements = employeeRepository.countActive();
 
         if (totalElements == 0) {
             return Page.empty(pageable);
@@ -46,7 +45,7 @@ public class EmployeeServiceImpl implements EmployeeService {
         int maxPageIndex = (int) Math.max(0, Math.ceil((double) totalElements / pageSize) - 1);
         int safePageNumber = Math.min(requestedPage, maxPageIndex);
         Pageable safePageable = PageRequest.of(safePageNumber, pageSize, pageable.getSort());
-        return employeeRepository.findAll(safePageable);
+        return employeeRepository.findAllActive(safePageable);
     }
 
     @Override
