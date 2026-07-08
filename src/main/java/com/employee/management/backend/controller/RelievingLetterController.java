@@ -21,7 +21,7 @@ public class RelievingLetterController {
         this.employeeLetterService = employeeLetterService;
     }
 
-    @GetMapping("/employee/{empId}")
+    @GetMapping("/employee/{empId}/relieving")
     public ResponseEntity<EmployeeLetterResponseDTO> getRelievingLetterDetails(
             @PathVariable Long empId,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate relievingDate) {

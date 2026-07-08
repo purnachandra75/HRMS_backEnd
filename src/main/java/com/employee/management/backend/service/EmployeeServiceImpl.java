@@ -35,17 +35,9 @@ public class EmployeeServiceImpl implements EmployeeService {
             pageable = PageRequest.of(0, 10);
         }
         int pageSize = Math.max(pageable.getPageSize(), 1);
-        int requestedPage = Math.max(pageable.getPageNumber(), 0);
-        long totalElements = employeeRepository.countActive();
-
-        if (totalElements == 0) {
-            return Page.empty(pageable);
-        }
-
-        int maxPageIndex = (int) Math.max(0, Math.ceil((double) totalElements / pageSize) - 1);
-        int safePageNumber = Math.min(requestedPage, maxPageIndex);
-        Pageable safePageable = PageRequest.of(safePageNumber, pageSize, pageable.getSort());
-        return employeeRepository.findAllActive(safePageable);
+        int pageNumber = Math.max(pageable.getPageNumber(), 0);
+        Pageable safePageable = PageRequest.of(pageNumber, pageSize, pageable.getSort());
+        return employeeRepository.findAll(safePageable);
     }
 
     @Override
@@ -115,8 +107,22 @@ public class EmployeeServiceImpl implements EmployeeService {
 
     @Override
     public Employee findById(Long empId) {
-        return employeeRepository.findById(empId)
-                .orElseThrow(() -> new ResourceNotFoundException("Employee", "empId", empId));
+        Employee employee = employeeRepository.findById(empId)
+            .orElseThrow(() -> new ResourceNotFoundException("Employee", "empId", empId));
+
+        // initialize lazy associations while within the transactional boundary
+        if (employee.getAddressDetails() != null) employee.getAddressDetails().getEmpId();
+        if (employee.getJobDetails() != null) employee.getJobDetails().getEmpId();
+        if (employee.getSalaryDetails() != null) employee.getSalaryDetails().getEmpId();
+        if (employee.getEducationDetails() != null) employee.getEducationDetails().getEmpId();
+        if (employee.getEmergencyContact() != null) employee.getEmergencyContact().getEmpId();
+        if (employee.getDocumentDetails() != null) employee.getDocumentDetails().getEmpId();
+        // initialize collections
+        employee.getLeaveBalances().size();
+        employee.getLeaveRequests().size();
+        employee.getLeaveHistory().size();
+
+        return employee;
     }
 
     @Override
