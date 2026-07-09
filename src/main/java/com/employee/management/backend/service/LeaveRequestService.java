@@ -12,6 +12,7 @@ import com.employee.management.backend.repository.EmployeeRepository;
 import com.employee.management.backend.repository.LeaveBalanceRepository;
 import com.employee.management.backend.repository.LeaveHistoryRepository;
 import com.employee.management.backend.repository.LeaveRequestRepository;
+import com.employee.management.backend.repository.HolidayRepository;
 import jakarta.transaction.Transactional;
 import org.springframework.stereotype.Service;
 
@@ -28,17 +29,20 @@ public class LeaveRequestService {
     private final EmployeeRepository employeeRepository;
     private final LeaveBalanceRepository leaveBalanceRepository;
     private final LeaveHistoryRepository leaveHistoryRepository;
+    private final HolidayRepository holidayRepository;
 
     private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ISO_DATE;
 
     public LeaveRequestService(LeaveRequestRepository leaveRequestRepository,
                                EmployeeRepository employeeRepository,
                                LeaveBalanceRepository leaveBalanceRepository,
-                               LeaveHistoryRepository leaveHistoryRepository) {
+                               LeaveHistoryRepository leaveHistoryRepository,
+                               HolidayRepository holidayRepository) {
         this.leaveRequestRepository = leaveRequestRepository;
         this.employeeRepository = employeeRepository;
         this.leaveBalanceRepository = leaveBalanceRepository;
         this.leaveHistoryRepository = leaveHistoryRepository;
+        this.holidayRepository = holidayRepository;
     }
 
     public LeaveRequestDTO createLeaveRequest(CreateLeaveRequestDTO requestDTO) {
@@ -51,11 +55,13 @@ public class LeaveRequestService {
         LocalDate fromDate = LocalDate.parse(requestDTO.getFromDate(), DATE_FORMATTER);
         LocalDate toDate = LocalDate.parse(requestDTO.getToDate(), DATE_FORMATTER);
 
-        // Calculate days (inclusive)
+        // Calculate calendar days (inclusive) and working days (exclude weekends and holidays)
         long daysBetween = java.time.temporal.ChronoUnit.DAYS.between(fromDate, toDate) + 1;
         if (daysBetween <= 0) {
             throw new RuntimeException("Invalid date range");
         }
+
+        int workingDays = calculateWorkingDays(fromDate, toDate);
 
         // Use provided year or default to current year
         Integer year = requestDTO.getYear();
@@ -63,21 +69,21 @@ public class LeaveRequestService {
             year = java.time.LocalDate.now().getYear();
         }
 
-        // Check leave balance
+        // Check leave balance against working days
         LeaveBalance leaveBalance = leaveBalanceRepository
-                .findByEmployeeEmpIdAndLeaveType(requestDTO.getEmpId(), requestDTO.getLeaveType())
-                .orElseThrow(() -> new RuntimeException("Leave balance not found for this leave type"));
+            .findByEmployeeEmpIdAndLeaveType(requestDTO.getEmpId(), requestDTO.getLeaveType())
+            .orElseThrow(() -> new RuntimeException("Leave balance not found for this leave type"));
 
-        if (leaveBalance.getBalance() < daysBetween) {
-            throw new RuntimeException("Insufficient leave balance. Available: " + leaveBalance.getBalance() + 
-                                     " days, Requested: " + daysBetween + " days");
+        if (leaveBalance.getBalance() < workingDays) {
+            throw new RuntimeException("Insufficient leave balance. Available: " + leaveBalance.getBalance() +
+                " days, Requested: " + workingDays + " working days");
         }
 
         // Create leave request
         LeaveRequest leaveRequest = new LeaveRequest();
         leaveRequest.setEmployee(employee);
         leaveRequest.setLeaveType(requestDTO.getLeaveType());
-        leaveRequest.setDays((int) daysBetween);
+        leaveRequest.setDays(workingDays);
         leaveRequest.setYear(year);
         leaveRequest.setFromDate(fromDate);
         leaveRequest.setToDate(toDate);
@@ -87,6 +93,24 @@ public class LeaveRequestService {
 
         LeaveRequest savedRequest = leaveRequestRepository.save(leaveRequest);
         return convertToDTO(savedRequest);
+    }
+
+    private int calculateWorkingDays(LocalDate start, LocalDate end) {
+        if (start.isAfter(end)) return 0;
+        // fetch holidays in range
+        List<com.employee.management.backend.Entity.Holiday> holidays = holidayRepository.findByDateBetweenOrderByDateAsc(start, end);
+        java.util.Set<LocalDate> holidayDates = holidays.stream().map(com.employee.management.backend.Entity.Holiday::getDate).collect(java.util.stream.Collectors.toSet());
+
+        int workingDays = 0;
+        LocalDate d = start;
+        while (!d.isAfter(end)) {
+            java.time.DayOfWeek dow = d.getDayOfWeek();
+            boolean isWeekend = dow == java.time.DayOfWeek.SATURDAY || dow == java.time.DayOfWeek.SUNDAY;
+            boolean isHoliday = holidayDates.contains(d);
+            if (!isWeekend && !isHoliday) workingDays++;
+            d = d.plusDays(1);
+        }
+        return workingDays;
     }
 
     public List<LeaveRequestDTO> getAllLeaveRequests() {
@@ -104,34 +128,72 @@ public class LeaveRequestService {
                 .orElseThrow(() -> new ResourceNotFoundException("LeaveRequest", "id", requestId));
 
         String oldStatus = leaveRequest.getStatus();
+
+        // preserve original days in case we need to restore
+        Integer originalDays = leaveRequest.getDays();
+
+        // compute working days from dates (exclude weekends and holidays)
+        int workingDaysFromDates = calculateWorkingDays(leaveRequest.getFromDate(), leaveRequest.getToDate());
+
+        // Prefer the days already stored on the leave request (created working days).
+        // If missing, fall back to computed working days. Ignore any incorrect `days` value sent in DTO.
+        int effectiveDays = (leaveRequest.getDays() != null && leaveRequest.getDays() > 0) ? leaveRequest.getDays() : workingDaysFromDates;
+        leaveRequest.setDays(effectiveDays);
+
         leaveRequest.setStatus(statusDTO.getStatus());
 
-        // If approved, deduct from leave balance
-        if ("Approved".equals(statusDTO.getStatus()) && !"Approved".equals(oldStatus)) {
-            LeaveBalance leaveBalance = leaveBalanceRepository
-                    .findByEmployeeEmpIdAndLeaveType(leaveRequest.getEmployee().getEmpId(), leaveRequest.getLeaveType())
-                    .orElseThrow(() -> new RuntimeException("Leave balance not found"));
+        LeaveBalance leaveBalance = leaveBalanceRepository
+                .findByEmployeeEmpIdAndLeaveType(leaveRequest.getEmployee().getEmpId(), leaveRequest.getLeaveType())
+                .orElseThrow(() -> new RuntimeException("Leave balance not found"));
 
-            leaveBalance.setBalance(leaveBalance.getBalance() - leaveRequest.getDays());
-            leaveBalanceRepository.save(leaveBalance);
+        // Approve flow
+        if ("Approved".equals(statusDTO.getStatus())) {
+            // Transition from non-approved -> approved: deduct full days
+            if (!"Approved".equals(oldStatus)) {
+                int deduct = effectiveDays;
+                if (leaveBalance.getBalance() < deduct) {
+                    throw new RuntimeException("Insufficient leave balance. Available: " + leaveBalance.getBalance() + " days, Requested: " + deduct + " days");
+                }
+                leaveBalance.setBalance(leaveBalance.getBalance() - deduct);
+                leaveBalanceRepository.save(leaveBalance);
 
-            // Create leave history entry
-            LeaveHistory history = new LeaveHistory(
-                    leaveRequest.getEmployee(),
-                    leaveRequest.getLeaveType(),
-                    leaveRequest.getDays(),
-                    leaveRequest.getYear()
-            );
-            leaveHistoryRepository.save(history);
+                LeaveHistory history = new LeaveHistory(
+                        leaveRequest.getEmployee(),
+                        leaveRequest.getLeaveType(),
+                        deduct,
+                        leaveRequest.getYear()
+                );
+                leaveHistoryRepository.save(history);
+            } else {
+                // Already approved and still approved: adjust by delta if days changed
+                int newDays = effectiveDays;
+                int delta = newDays - (originalDays == null ? 0 : originalDays);
+                if (delta > 0) {
+                    if (leaveBalance.getBalance() < delta) {
+                        throw new RuntimeException("Insufficient leave balance for adjustment. Available: " + leaveBalance.getBalance() + " days, Additional requested: " + delta + " days");
+                    }
+                    leaveBalance.setBalance(leaveBalance.getBalance() - delta);
+                    leaveBalanceRepository.save(leaveBalance);
+
+                    LeaveHistory history = new LeaveHistory(
+                            leaveRequest.getEmployee(),
+                            leaveRequest.getLeaveType(),
+                            delta,
+                            leaveRequest.getYear()
+                    );
+                    leaveHistoryRepository.save(history);
+                } else if (delta < 0) {
+                    // reduction in approved days -> restore balance
+                    leaveBalance.setBalance(leaveBalance.getBalance() + (-delta));
+                    leaveBalanceRepository.save(leaveBalance);
+                }
+            }
         }
 
-        // If rejected or cancelled, restore leave balance
-        if ("Rejected".equals(statusDTO.getStatus()) && "Approved".equals(oldStatus)) {
-            LeaveBalance leaveBalance = leaveBalanceRepository
-                    .findByEmployeeEmpIdAndLeaveType(leaveRequest.getEmployee().getEmpId(), leaveRequest.getLeaveType())
-                    .orElseThrow(() -> new RuntimeException("Leave balance not found"));
-
-            leaveBalance.setBalance(leaveBalance.getBalance() + leaveRequest.getDays());
+        // Rejection or cancellation: if it was previously approved, restore original days
+        if (("Rejected".equals(statusDTO.getStatus()) || "Cancelled".equals(statusDTO.getStatus())) && "Approved".equals(oldStatus)) {
+            int restore = originalDays == null ? 0 : originalDays;
+            leaveBalance.setBalance(leaveBalance.getBalance() + restore);
             leaveBalanceRepository.save(leaveBalance);
         }
 

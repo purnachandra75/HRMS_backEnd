@@ -3,6 +3,7 @@ package com.employee.management.backend.dto;
 public class UpdateLeaveRequestStatusDTO {
     private String status;
     private String reason;
+    private Integer days;
 
     public UpdateLeaveRequestStatusDTO() {
     }
@@ -10,6 +11,12 @@ public class UpdateLeaveRequestStatusDTO {
     public UpdateLeaveRequestStatusDTO(String status, String reason) {
         this.status = status;
         this.reason = reason;
+    }
+
+    public UpdateLeaveRequestStatusDTO(String status, String reason, Integer days) {
+        this.status = status;
+        this.reason = reason;
+        this.days = days;
     }
 
     public String getStatus() {
@@ -26,5 +33,13 @@ public class UpdateLeaveRequestStatusDTO {
 
     public void setReason(String reason) {
         this.reason = reason;
+    }
+
+    public Integer getDays() {
+        return days;
+    }
+
+    public void setDays(Integer days) {
+        this.days = days;
     }
 }
