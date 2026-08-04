@@ -13,7 +13,11 @@ import com.employee.management.backend.repository.LeaveBalanceRepository;
 import com.employee.management.backend.repository.LeaveHistoryRepository;
 import com.employee.management.backend.repository.LeaveRequestRepository;
 import com.employee.management.backend.repository.HolidayRepository;
+import jakarta.mail.internet.MimeMessage;
 import jakarta.transaction.Transactional;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.mail.javamail.JavaMailSender;
+import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
@@ -30,19 +34,33 @@ public class LeaveRequestService {
     private final LeaveBalanceRepository leaveBalanceRepository;
     private final LeaveHistoryRepository leaveHistoryRepository;
     private final HolidayRepository holidayRepository;
+    private final JavaMailSender mailSender;
+    private final String mailFrom;
+    private final String adminNotificationEmail;
+    private final String adminLeaveDashboardUrl;
 
     private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ISO_DATE;
+    private static final DateTimeFormatter DISPLAY_DATE_FORMATTER = DateTimeFormatter.ofPattern("dd MMM yyyy");
 
     public LeaveRequestService(LeaveRequestRepository leaveRequestRepository,
                                EmployeeRepository employeeRepository,
                                LeaveBalanceRepository leaveBalanceRepository,
                                LeaveHistoryRepository leaveHistoryRepository,
-                               HolidayRepository holidayRepository) {
+                               HolidayRepository holidayRepository,
+                               JavaMailSender mailSender,
+                               @Value("${app.mail.from}") String mailFrom,
+                               @Value("${app.admin.notification-email}") String adminNotificationEmail,
+                               @Value("${app.frontend-url}") String frontendUrl,
+                               @Value("${app.admin.leave-dashboard-path}") String adminLeaveDashboardPath) {
         this.leaveRequestRepository = leaveRequestRepository;
         this.employeeRepository = employeeRepository;
         this.leaveBalanceRepository = leaveBalanceRepository;
         this.leaveHistoryRepository = leaveHistoryRepository;
         this.holidayRepository = holidayRepository;
+        this.mailSender = mailSender;
+        this.mailFrom = mailFrom;
+        this.adminNotificationEmail = adminNotificationEmail;
+        this.adminLeaveDashboardUrl = frontendUrl + adminLeaveDashboardPath;
     }
 
     public LeaveRequestDTO createLeaveRequest(CreateLeaveRequestDTO requestDTO) {
@@ -62,6 +80,15 @@ public class LeaveRequestService {
         }
 
         int workingDays = calculateWorkingDays(fromDate, toDate);
+
+        boolean hasOverlappingRequest = leaveRequestRepository.findByEmployeeEmpIdOrderByCreatedAtDesc(requestDTO.getEmpId())
+                .stream()
+                .filter(existing -> "Pending".equalsIgnoreCase(existing.getStatus()) || "Approved".equalsIgnoreCase(existing.getStatus()))
+                .anyMatch(existing -> !existing.getToDate().isBefore(fromDate) && !existing.getFromDate().isAfter(toDate));
+
+        if (hasOverlappingRequest) {
+            throw new RuntimeException("A pending or approved leave request already exists for the selected dates");
+        }
 
         // Use provided year or default to current year
         Integer year = requestDTO.getYear();
@@ -92,7 +119,60 @@ public class LeaveRequestService {
         leaveRequest.setStatus("Pending");
 
         LeaveRequest savedRequest = leaveRequestRepository.save(leaveRequest);
+        sendAdminLeaveNotification(employee, savedRequest);
         return convertToDTO(savedRequest);
+    }
+
+    private void sendAdminLeaveNotification(Employee employee, LeaveRequest leaveRequest) {
+        if (adminNotificationEmail == null || adminNotificationEmail.trim().isEmpty()) {
+            return;
+        }
+
+        String employeeName = String.format("%s %s",
+                employee.getFirstName() == null ? "" : employee.getFirstName(),
+                employee.getLastName() == null ? "" : employee.getLastName()).trim();
+
+        try {
+            MimeMessage message = mailSender.createMimeMessage();
+            MimeMessageHelper helper = new MimeMessageHelper(message, false, "UTF-8");
+            helper.setTo(adminNotificationEmail);
+            helper.setFrom(mailFrom);
+            if (employee.getEmail() != null && !employee.getEmail().trim().isEmpty()) {
+                helper.setReplyTo(employee.getEmail());
+            }
+            helper.setSubject("New Leave Request from " + employeeName);
+            helper.setText(buildAdminNotificationBody(employeeName, employee, leaveRequest), true);
+            mailSender.send(message);
+        } catch (Exception ex) {
+            System.out.println("Failed to send admin leave notification email - "
+                    + ex.getClass().getSimpleName() + ": " + ex.getMessage());
+        }
+    }
+
+    private String buildAdminNotificationBody(String employeeName, Employee employee, LeaveRequest leaveRequest) {
+        return "<p>Hello,</p>"
+                + "<p>A new leave request has been submitted and is awaiting your review:</p>"
+                + "<ul>"
+                + "<li><strong>Employee Name:</strong> " + employeeName + "</li>"
+                + "<li><strong>Employee ID:</strong> " + employee.getEmpId() + "</li>"
+                + "<li><strong>Leave Type:</strong> " + leaveRequest.getLeaveType() + "</li>"
+                + "<li><strong>From Date:</strong> " + leaveRequest.getFromDate().format(DISPLAY_DATE_FORMATTER) + "</li>"
+                + "<li><strong>To Date:</strong> " + leaveRequest.getToDate().format(DISPLAY_DATE_FORMATTER) + "</li>"
+                + "<li><strong>Reason:</strong> " + leaveRequest.getReason() + "</li>"
+                + "</ul>"
+                + "<p><a href=\"" + adminLeaveDashboardUrl + "\">Review this request on the Leave Management dashboard</a></p>";
+    }
+
+    private String normalizeStatus(String status) {
+        if (status == null) {
+            throw new RuntimeException("Status is required");
+        }
+        String trimmed = status.trim();
+        if ("pending".equalsIgnoreCase(trimmed)) return "Pending";
+        if ("approved".equalsIgnoreCase(trimmed)) return "Approved";
+        if ("rejected".equalsIgnoreCase(trimmed)) return "Rejected";
+        if ("cancelled".equalsIgnoreCase(trimmed) || "canceled".equalsIgnoreCase(trimmed)) return "Cancelled";
+        throw new RuntimeException("Invalid status: " + status);
     }
 
     private int calculateWorkingDays(LocalDate start, LocalDate end) {
@@ -140,14 +220,15 @@ public class LeaveRequestService {
         int effectiveDays = (leaveRequest.getDays() != null && leaveRequest.getDays() > 0) ? leaveRequest.getDays() : workingDaysFromDates;
         leaveRequest.setDays(effectiveDays);
 
-        leaveRequest.setStatus(statusDTO.getStatus());
+        String newStatus = normalizeStatus(statusDTO.getStatus());
+        leaveRequest.setStatus(newStatus);
 
         LeaveBalance leaveBalance = leaveBalanceRepository
                 .findByEmployeeEmpIdAndLeaveType(leaveRequest.getEmployee().getEmpId(), leaveRequest.getLeaveType())
                 .orElseThrow(() -> new RuntimeException("Leave balance not found"));
 
         // Approve flow
-        if ("Approved".equals(statusDTO.getStatus())) {
+        if ("Approved".equals(newStatus)) {
             // Transition from non-approved -> approved: deduct full days
             if (!"Approved".equals(oldStatus)) {
                 int deduct = effectiveDays;
@@ -191,14 +272,58 @@ public class LeaveRequestService {
         }
 
         // Rejection or cancellation: if it was previously approved, restore original days
-        if (("Rejected".equals(statusDTO.getStatus()) || "Cancelled".equals(statusDTO.getStatus())) && "Approved".equals(oldStatus)) {
+        if (("Rejected".equals(newStatus) || "Cancelled".equals(newStatus)) && "Approved".equals(oldStatus)) {
             int restore = originalDays == null ? 0 : originalDays;
             leaveBalance.setBalance(leaveBalance.getBalance() + restore);
             leaveBalanceRepository.save(leaveBalance);
         }
 
         LeaveRequest updatedRequest = leaveRequestRepository.save(leaveRequest);
+
+        if (!newStatus.equals(oldStatus) && ("Approved".equals(newStatus) || "Rejected".equals(newStatus))) {
+            sendEmployeeStatusNotification(updatedRequest.getEmployee(), updatedRequest, newStatus);
+        }
+
         return convertToDTO(updatedRequest);
+    }
+
+    private void sendEmployeeStatusNotification(Employee employee, LeaveRequest leaveRequest, String newStatus) {
+        if (employee.getEmail() == null || employee.getEmail().trim().isEmpty()) {
+            return;
+        }
+
+        String employeeName = String.format("%s %s",
+                employee.getFirstName() == null ? "" : employee.getFirstName(),
+                employee.getLastName() == null ? "" : employee.getLastName()).trim();
+
+        try {
+            MimeMessage message = mailSender.createMimeMessage();
+            MimeMessageHelper helper = new MimeMessageHelper(message, false, "UTF-8");
+            helper.setTo(employee.getEmail());
+            helper.setFrom(mailFrom);
+            helper.setSubject("Your Leave Request has been " + newStatus);
+            helper.setText(buildEmployeeStatusBody(employeeName, leaveRequest, newStatus), true);
+            mailSender.send(message);
+        } catch (Exception ex) {
+            System.out.println("Failed to send leave status notification email - "
+                    + ex.getClass().getSimpleName() + ": " + ex.getMessage());
+        }
+    }
+
+    private String buildEmployeeStatusBody(String employeeName, LeaveRequest leaveRequest, String newStatus) {
+        String statusMessage = "Approved".equals(newStatus)
+                ? "Your leave request has been <strong>approved</strong>."
+                : "Your leave request has been <strong>rejected</strong>.";
+
+        return "<p>Hello " + employeeName + ",</p>"
+                + "<p>" + statusMessage + "</p>"
+                + "<ul>"
+                + "<li><strong>Leave Type:</strong> " + leaveRequest.getLeaveType() + "</li>"
+                + "<li><strong>From Date:</strong> " + leaveRequest.getFromDate().format(DISPLAY_DATE_FORMATTER) + "</li>"
+                + "<li><strong>To Date:</strong> " + leaveRequest.getToDate().format(DISPLAY_DATE_FORMATTER) + "</li>"
+                + "<li><strong>Status:</strong> " + newStatus + "</li>"
+                + "</ul>"
+                + "<p>If you have any questions, please contact HR.</p>";
     }
 
     public LeaveRequestDTO getLeaveRequestById(Long requestId) {

@@ -9,6 +9,7 @@ import com.employee.management.backend.dto.PayrollEmployeeResponseDTO;
 import com.employee.management.backend.dto.PayrollProcessRequestDTO;
 import com.employee.management.backend.dto.PayrollProcessResponseDTO;
 import com.employee.management.backend.repository.EmployeeRepository;
+import com.employee.management.backend.repository.HolidayRepository;
 import com.employee.management.backend.repository.LeaveRequestRepository;
 import com.employee.management.backend.repository.PayrollRepository;
 import org.springframework.stereotype.Service;
@@ -16,9 +17,12 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.YearMonth;
 import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 @Service
 public class PayrollService {
@@ -26,13 +30,16 @@ public class PayrollService {
     private final EmployeeRepository employeeRepository;
     private final LeaveRequestRepository leaveRequestRepository;
     private final PayrollRepository payrollRepository;
+    private final HolidayRepository holidayRepository;
 
     public PayrollService(EmployeeRepository employeeRepository,
                           LeaveRequestRepository leaveRequestRepository,
-                          PayrollRepository payrollRepository) {
+                          PayrollRepository payrollRepository,
+                          HolidayRepository holidayRepository) {
         this.employeeRepository = employeeRepository;
         this.leaveRequestRepository = leaveRequestRepository;
         this.payrollRepository = payrollRepository;
+        this.holidayRepository = holidayRepository;
     }
 
     @Transactional
@@ -288,7 +295,28 @@ public class PayrollService {
         LocalDate end = leaveRequest.getToDate().isAfter(payrollMonth.atEndOfMonth())
                 ? payrollMonth.atEndOfMonth()
                 : leaveRequest.getToDate();
-        return (int) java.time.temporal.ChronoUnit.DAYS.between(start, end) + 1;
+        return countWorkingDays(start, end);
+    }
+
+    private int countWorkingDays(LocalDate start, LocalDate end) {
+        if (start.isAfter(end)) {
+            return 0;
+        }
+
+        Set<LocalDate> holidayDates = holidayRepository.findByDateBetweenOrderByDateAsc(start, end).stream()
+                .map(com.employee.management.backend.Entity.Holiday::getDate)
+                .collect(Collectors.toSet());
+
+        int workingDays = 0;
+        LocalDate current = start;
+        while (!current.isAfter(end)) {
+            boolean isWeekend = current.getDayOfWeek() == DayOfWeek.SATURDAY || current.getDayOfWeek() == DayOfWeek.SUNDAY;
+            if (!isWeekend && !holidayDates.contains(current)) {
+                workingDays++;
+            }
+            current = current.plusDays(1);
+        }
+        return workingDays;
     }
 
     private boolean isUnpaidLeave(String leaveType) {

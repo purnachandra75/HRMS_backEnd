@@ -6,6 +6,7 @@ import com.employee.management.backend.dto.LeaveRequestDTO;
 import com.employee.management.backend.dto.UpdateLeaveRequestStatusDTO;
 import com.employee.management.backend.service.LeaveRequestService;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -64,6 +65,7 @@ public class LeaveRequestController {
         }
     }
 
+    @PreAuthorize("hasRole('ADMIN')")
     @PatchMapping("/{requestId}/status")
     public ResponseEntity<?> updateLeaveRequestStatus(
             @PathVariable Long requestId,

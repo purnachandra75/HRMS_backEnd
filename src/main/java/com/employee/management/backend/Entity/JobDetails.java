@@ -22,6 +22,12 @@ public class JobDetails {
     private String experience;
     private String employeeCategory;
 
+    // "Bench" or "Project" - whether the employee is currently allocated to a client project.
+    private String workStatus;
+    private String currentProjectName;
+    private String currentProjectManager;
+    private String currentProjectStartDate;
+
     @OneToOne(fetch = FetchType.LAZY)
     @MapsId
     @JoinColumn(name = "emp_id")
@@ -122,5 +128,37 @@ public class JobDetails {
 
     public void setEmployee(Employee employee) {
         this.employee = employee;
+    }
+
+    public String getWorkStatus() {
+        return workStatus;
+    }
+
+    public void setWorkStatus(String workStatus) {
+        this.workStatus = workStatus;
+    }
+
+    public String getCurrentProjectName() {
+        return currentProjectName;
+    }
+
+    public void setCurrentProjectName(String currentProjectName) {
+        this.currentProjectName = currentProjectName;
+    }
+
+    public String getCurrentProjectManager() {
+        return currentProjectManager;
+    }
+
+    public void setCurrentProjectManager(String currentProjectManager) {
+        this.currentProjectManager = currentProjectManager;
+    }
+
+    public String getCurrentProjectStartDate() {
+        return currentProjectStartDate;
+    }
+
+    public void setCurrentProjectStartDate(String currentProjectStartDate) {
+        this.currentProjectStartDate = currentProjectStartDate;
     }
 }

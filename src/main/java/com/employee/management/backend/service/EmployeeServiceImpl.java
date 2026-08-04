@@ -6,6 +6,7 @@ import com.employee.management.backend.Entity.EducationDetails;
 import com.employee.management.backend.Entity.EmergencyContact;
 import com.employee.management.backend.Entity.Employee;
 import com.employee.management.backend.Entity.JobDetails;
+import com.employee.management.backend.Entity.ProjectHistory;
 import com.employee.management.backend.Entity.SalaryDetails;
 import com.employee.management.backend.exception.ResourceNotFoundException;
 import com.employee.management.backend.repository.EmployeeRepository;
@@ -121,6 +122,7 @@ public class EmployeeServiceImpl implements EmployeeService {
         employee.getLeaveBalances().size();
         employee.getLeaveRequests().size();
         employee.getLeaveHistory().size();
+        employee.getProjectHistory().size();
 
         return employee;
     }
@@ -128,6 +130,7 @@ public class EmployeeServiceImpl implements EmployeeService {
     @Override
     public Employee createEmployee(Employee employee) {
         linkChildEntities(employee);
+        syncProjectHistoryWithWorkStatus(employee, null, null);
         return employeeRepository.save(employee);
     }
 
@@ -137,6 +140,14 @@ public class EmployeeServiceImpl implements EmployeeService {
         applyUpdates(existing, employee);
         linkChildEntities(existing);
         return employeeRepository.save(existing);
+    }
+
+    @Override
+    public void updatePasswordHash(Long empId, String passwordHash) {
+        Employee existing = employeeRepository.findById(empId)
+                .orElseThrow(() -> new ResourceNotFoundException("Employee", "empId", empId));
+        existing.setPassword(passwordHash);
+        employeeRepository.save(existing);
     }
 
     @Override
@@ -251,6 +262,12 @@ public class EmployeeServiceImpl implements EmployeeService {
         existing.setRole(incoming.getRole());
         existing.setProfilePhoto(incoming.getProfilePhoto());
 
+        // Capture the work-status/current-project state as it was before this save, so we can
+        // tell afterwards whether the employee just moved onto or off of a project.
+        JobDetails previousJobDetails = existing.getJobDetails();
+        String previousWorkStatus = previousJobDetails != null ? previousJobDetails.getWorkStatus() : null;
+        String previousProjectName = previousJobDetails != null ? previousJobDetails.getCurrentProjectName() : null;
+
         // Update child entities instead of replacing them to avoid Hibernate session conflicts
         updateAddressDetails(existing, incoming.getAddressDetails());
         updateJobDetails(existing, incoming.getJobDetails());
@@ -258,6 +275,52 @@ public class EmployeeServiceImpl implements EmployeeService {
         updateEducationDetails(existing, incoming.getEducationDetails());
         updateEmergencyContact(existing, incoming.getEmergencyContact());
         updateDocumentDetails(existing, incoming.getDocumentDetails());
+        updateProjectHistory(existing, incoming.getProjectHistory());
+        syncProjectHistoryWithWorkStatus(existing, previousWorkStatus, previousProjectName);
+    }
+
+    // Keeps the project-history table in sync with the "current project" fields on JobDetails,
+    // so an admin doesn't have to manually duplicate the same info into both places:
+    //  - Assigning someone to a project (workStatus -> "Project") opens a history record for it,
+    //    if one isn't already open.
+    //  - Moving someone off a project (workStatus -> "Bench") closes out that project's open
+    //    history record by stamping today's date as its end date.
+    private void syncProjectHistoryWithWorkStatus(Employee employee, String previousWorkStatus, String previousProjectName) {
+        JobDetails jobDetails = employee.getJobDetails();
+        if (jobDetails == null) {
+            return;
+        }
+
+        boolean wasOnProject = "Project".equalsIgnoreCase(previousWorkStatus);
+        boolean isOnProject = "Project".equalsIgnoreCase(jobDetails.getWorkStatus());
+        List<ProjectHistory> history = employee.getProjectHistory();
+        String today = java.time.LocalDate.now().toString();
+
+        if (wasOnProject && !isOnProject) {
+            history.stream()
+                    .filter(entry -> entry.getEndDate() == null || entry.getEndDate().isBlank())
+                    .filter(entry -> previousProjectName == null || previousProjectName.equalsIgnoreCase(entry.getProjectName()))
+                    .findFirst()
+                    .ifPresent(entry -> entry.setEndDate(today));
+        }
+
+        String currentProjectName = jobDetails.getCurrentProjectName();
+        if (isOnProject && currentProjectName != null && !currentProjectName.isBlank()) {
+            boolean hasOpenRecordForCurrentProject = history.stream()
+                    .anyMatch(entry -> currentProjectName.equalsIgnoreCase(entry.getProjectName())
+                            && (entry.getEndDate() == null || entry.getEndDate().isBlank()));
+
+            if (!hasOpenRecordForCurrentProject) {
+                ProjectHistory entry = new ProjectHistory();
+                entry.setEmployee(employee);
+                entry.setProjectName(currentProjectName);
+                entry.setProjectManager(jobDetails.getCurrentProjectManager());
+                String startDate = jobDetails.getCurrentProjectStartDate();
+                entry.setStartDate(startDate != null && !startDate.isBlank() ? startDate : today);
+                entry.setEndDate(null);
+                history.add(entry);
+            }
+        }
     }
 
     private void updateAddressDetails(Employee employee, AddressDetails incoming) {
@@ -301,6 +364,10 @@ public class EmployeeServiceImpl implements EmployeeService {
             existing.setShiftTiming(incoming.getShiftTiming());
             existing.setExperience(incoming.getExperience());
             existing.setEmployeeCategory(incoming.getEmployeeCategory());
+            existing.setWorkStatus(incoming.getWorkStatus());
+            existing.setCurrentProjectName(incoming.getCurrentProjectName());
+            existing.setCurrentProjectManager(incoming.getCurrentProjectManager());
+            existing.setCurrentProjectStartDate(incoming.getCurrentProjectStartDate());
         }
     }
 
@@ -388,6 +455,28 @@ public class EmployeeServiceImpl implements EmployeeService {
         }
     }
 
+    private void updateProjectHistory(Employee employee, List<ProjectHistory> incomingList) {
+        // The edit form always resubmits the complete current list, so replace the managed
+        // collection's contents in place (never reassign the reference) - Hibernate relies on
+        // that to correctly delete orphaned rows and insert new ones via cascade/orphanRemoval.
+        List<ProjectHistory> existingList = employee.getProjectHistory();
+        existingList.clear();
+
+        if (incomingList == null) {
+            return;
+        }
+
+        for (ProjectHistory incoming : incomingList) {
+            ProjectHistory entry = new ProjectHistory();
+            entry.setEmployee(employee);
+            entry.setProjectName(incoming.getProjectName());
+            entry.setProjectManager(incoming.getProjectManager());
+            entry.setStartDate(incoming.getStartDate());
+            entry.setEndDate(incoming.getEndDate());
+            existingList.add(entry);
+        }
+    }
+
     private void linkChildEntities(Employee employee) {
         if (employee == null) {
             return;
@@ -410,6 +499,9 @@ public class EmployeeServiceImpl implements EmployeeService {
         }
         if (employee.getDocumentDetails() != null) {
             employee.getDocumentDetails().setEmployee(employee);
+        }
+        if (employee.getProjectHistory() != null) {
+            employee.getProjectHistory().forEach(entry -> entry.setEmployee(employee));
         }
     }
 }

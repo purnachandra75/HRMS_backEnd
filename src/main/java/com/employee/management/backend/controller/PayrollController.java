@@ -7,6 +7,7 @@ import com.employee.management.backend.service.PayrollService;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -32,6 +33,7 @@ public class PayrollController {
         this.payrollExcelService = payrollExcelService;
     }
 
+    @PreAuthorize("hasRole('ADMIN')")
     @PostMapping("/process")
     public ResponseEntity<?> processPayroll(@RequestBody PayrollProcessRequestDTO request) {
         try {
@@ -41,6 +43,7 @@ public class PayrollController {
         }
     }
 
+    @PreAuthorize("hasRole('ADMIN')")
     @PostMapping("/process/excel")
     public ResponseEntity<?> processPayrollExcel(@RequestBody PayrollProcessRequestDTO request) {
         try {
@@ -76,24 +79,28 @@ public class PayrollController {
         return buildReportResponse(month, year);
     }
 
+    @PreAuthorize("hasRole('ADMIN')")
     @PutMapping("/{payrollId}/status")
     public ResponseEntity<?> updatePayrollStatus(@PathVariable Long payrollId,
                                                  @RequestBody PayrollStatusUpdateRequest request) {
         return buildStatusUpdateResponse(payrollId, request);
     }
 
+    @PreAuthorize("hasRole('ADMIN')")
     @PatchMapping("/{payrollId}/status")
     public ResponseEntity<?> patchPayrollStatus(@PathVariable Long payrollId,
                                                 @RequestBody PayrollStatusUpdateRequest request) {
         return buildStatusUpdateResponse(payrollId, request);
     }
 
+    @PreAuthorize("hasRole('ADMIN')")
     @PutMapping({"/report/{payrollId}/status", "/reports/{payrollId}/status"})
     public ResponseEntity<?> updatePayrollReportStatus(@PathVariable Long payrollId,
                                                        @RequestBody PayrollStatusUpdateRequest request) {
         return buildStatusUpdateResponse(payrollId, request);
     }
 
+    @PreAuthorize("hasRole('ADMIN')")
     @PatchMapping({"/report/{payrollId}/status", "/reports/{payrollId}/status"})
     public ResponseEntity<?> patchPayrollReportStatus(@PathVariable Long payrollId,
                                                       @RequestBody PayrollStatusUpdateRequest request) {

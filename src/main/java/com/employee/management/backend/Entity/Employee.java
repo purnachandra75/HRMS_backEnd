@@ -1,6 +1,7 @@
 package com.employee.management.backend.Entity;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.persistence.*;
 import java.util.ArrayList;
 import java.util.List;
@@ -24,6 +25,7 @@ public class Employee {
     private String bloodGroup;
     private String maritalStatus;
     private String nationality;
+    @JsonProperty(access = JsonProperty.Access.WRITE_ONLY)
     private String password;
     private String role;
     private String profilePhoto;
@@ -54,6 +56,9 @@ public class Employee {
 
     @OneToMany(mappedBy = "employee", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
     private List<LeaveHistory> leaveHistory = new ArrayList<>();
+
+    @OneToMany(mappedBy = "employee", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+    private List<ProjectHistory> projectHistory = new ArrayList<>();
 
     public Long getEmpId() {
         return empId;
@@ -237,5 +242,13 @@ public class Employee {
 
     public void setLeaveHistory(List<LeaveHistory> leaveHistory) {
         this.leaveHistory = leaveHistory;
+    }
+
+    public List<ProjectHistory> getProjectHistory() {
+        return projectHistory;
+    }
+
+    public void setProjectHistory(List<ProjectHistory> projectHistory) {
+        this.projectHistory = projectHistory;
     }
 }

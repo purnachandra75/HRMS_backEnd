@@ -118,6 +118,9 @@ public class AttendanceController {
                         try { out = LocalTime.parse(checkOutTime, f); break; } catch (Exception e) { }
                     }
                     if (in != null && out != null) {
+                        if (!out.isAfter(in)) {
+                            return ResponseEntity.badRequest().body(Map.of("error", "Check-out time must be after check-in time"));
+                        }
                         long minutes = ChronoUnit.MINUTES.between(in, out);
                         double hours = Math.round((minutes / 60.0) * 100.0) / 100.0;
                         attendance.setTotalHours(hours);
