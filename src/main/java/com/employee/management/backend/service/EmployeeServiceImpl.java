@@ -6,10 +6,12 @@ import com.employee.management.backend.Entity.EducationDetails;
 import com.employee.management.backend.Entity.EmergencyContact;
 import com.employee.management.backend.Entity.Employee;
 import com.employee.management.backend.Entity.JobDetails;
+import com.employee.management.backend.Entity.LeaveBalance;
 import com.employee.management.backend.Entity.ProjectHistory;
 import com.employee.management.backend.Entity.SalaryDetails;
 import com.employee.management.backend.exception.ResourceNotFoundException;
 import com.employee.management.backend.repository.EmployeeRepository;
+import com.employee.management.backend.repository.LeaveBalanceRepository;
 import com.employee.management.backend.dto.DocumentFile;
 import jakarta.transaction.Transactional;
 import org.springframework.data.domain.Page;
@@ -24,10 +26,16 @@ import org.springframework.web.multipart.MultipartFile;
 @Service
 @Transactional
 public class EmployeeServiceImpl implements EmployeeService {
-    private final EmployeeRepository employeeRepository;
+    // Kept in sync with LeaveInitializer's startup defaults.
+    private static final String[] DEFAULT_LEAVE_TYPES = {"Casual", "Sick", "Paid"};
+    private static final int[] DEFAULT_LEAVE_ALLOCATIONS = {12, 8, 20};
 
-    public EmployeeServiceImpl(EmployeeRepository employeeRepository) {
+    private final EmployeeRepository employeeRepository;
+    private final LeaveBalanceRepository leaveBalanceRepository;
+
+    public EmployeeServiceImpl(EmployeeRepository employeeRepository, LeaveBalanceRepository leaveBalanceRepository) {
         this.employeeRepository = employeeRepository;
+        this.leaveBalanceRepository = leaveBalanceRepository;
     }
 
     @Override
@@ -131,7 +139,19 @@ public class EmployeeServiceImpl implements EmployeeService {
     public Employee createEmployee(Employee employee) {
         linkChildEntities(employee);
         syncProjectHistoryWithWorkStatus(employee, null, null);
-        return employeeRepository.save(employee);
+        Employee saved = employeeRepository.save(employee);
+        seedDefaultLeaveBalances(saved);
+        return saved;
+    }
+
+    private void seedDefaultLeaveBalances(Employee employee) {
+        for (int i = 0; i < DEFAULT_LEAVE_TYPES.length; i++) {
+            LeaveBalance leaveBalance = new LeaveBalance();
+            leaveBalance.setEmployee(employee);
+            leaveBalance.setLeaveType(DEFAULT_LEAVE_TYPES[i]);
+            leaveBalance.setBalance(DEFAULT_LEAVE_ALLOCATIONS[i]);
+            leaveBalanceRepository.save(leaveBalance);
+        }
     }
 
     @Override
