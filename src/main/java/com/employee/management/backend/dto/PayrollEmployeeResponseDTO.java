@@ -26,6 +26,8 @@ public class PayrollEmployeeResponseDTO {
     private Integer unpaidLeaveDays;
     private Double leaveDeduction;
     private Double netSalary;
+    private Boolean manualPayslip;
+    private Boolean hasPayslipFile;
 
     public PayrollEmployeeResponseDTO() {
     }
@@ -228,5 +230,21 @@ public class PayrollEmployeeResponseDTO {
 
     public void setNetSalary(Double netSalary) {
         this.netSalary = netSalary;
+    }
+
+    public Boolean getManualPayslip() {
+        return manualPayslip;
+    }
+
+    public void setManualPayslip(Boolean manualPayslip) {
+        this.manualPayslip = manualPayslip;
+    }
+
+    public Boolean getHasPayslipFile() {
+        return hasPayslipFile;
+    }
+
+    public void setHasPayslipFile(Boolean hasPayslipFile) {
+        this.hasPayslipFile = hasPayslipFile;
     }
 }

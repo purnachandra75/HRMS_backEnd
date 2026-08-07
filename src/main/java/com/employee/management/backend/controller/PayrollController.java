@@ -1,13 +1,16 @@
 package com.employee.management.backend.controller;
 
+import com.employee.management.backend.dto.DocumentFile;
 import com.employee.management.backend.dto.PayrollProcessRequestDTO;
 import com.employee.management.backend.dto.PayrollProcessResponseDTO;
+import com.employee.management.backend.security.AuthenticatedUser;
 import com.employee.management.backend.service.PayrollExcelService;
 import com.employee.management.backend.service.PayrollService;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -17,6 +20,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.Map;
 
@@ -105,6 +109,70 @@ public class PayrollController {
     public ResponseEntity<?> patchPayrollReportStatus(@PathVariable Long payrollId,
                                                       @RequestBody PayrollStatusUpdateRequest request) {
         return buildStatusUpdateResponse(payrollId, request);
+    }
+
+    @PreAuthorize("hasRole('ADMIN')")
+    @PutMapping("/{payrollId}/payslip-mode")
+    public ResponseEntity<?> updatePayslipMode(@PathVariable Long payrollId,
+                                               @RequestBody PayslipModeUpdateRequest request) {
+        return buildPayslipModeResponse(payrollId, request);
+    }
+
+    @PreAuthorize("hasRole('ADMIN')")
+    @PatchMapping("/{payrollId}/payslip-mode")
+    public ResponseEntity<?> patchPayslipMode(@PathVariable Long payrollId,
+                                              @RequestBody PayslipModeUpdateRequest request) {
+        return buildPayslipModeResponse(payrollId, request);
+    }
+
+    @PreAuthorize("hasRole('ADMIN')")
+    @PostMapping(path = "/{payrollId}/payslip", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<?> uploadManualPayslip(@PathVariable Long payrollId,
+                                                 @RequestParam("file") MultipartFile file) {
+        try {
+            payrollService.uploadManualPayslip(payrollId, file);
+            return ResponseEntity.ok().build();
+        } catch (RuntimeException ex) {
+            return ResponseEntity.badRequest().body(Map.of("error", ex.getMessage()));
+        }
+    }
+
+    @GetMapping("/{payrollId}/payslip")
+    public ResponseEntity<?> downloadManualPayslip(@PathVariable Long payrollId,
+                                                    Authentication authentication) {
+        AuthenticatedUser requester = authentication != null && authentication.getPrincipal() instanceof AuthenticatedUser user
+                ? user
+                : null;
+        try {
+            DocumentFile payslip = payrollService.getManualPayslip(payrollId, requester);
+            return ResponseEntity.ok()
+                    .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + payslip.getFileName() + "\"")
+                    .contentType(MediaType.parseMediaType(payslip.getContentType()))
+                    .contentLength(payslip.getSize())
+                    .body(payslip.getData());
+        } catch (SecurityException ex) {
+            return ResponseEntity.status(403).body(Map.of("error", ex.getMessage()));
+        } catch (RuntimeException ex) {
+            return ResponseEntity.badRequest().body(Map.of("error", ex.getMessage()));
+        }
+    }
+
+    private ResponseEntity<?> buildPayslipModeResponse(Long payrollId, PayslipModeUpdateRequest request) {
+        try {
+            if (request == null) {
+                return ResponseEntity.badRequest().body(Map.of("error", "Request body is required"));
+            }
+
+            return ResponseEntity.ok(payrollService.updatePayslipMode(
+                    payrollId,
+                    request.getEmployeeId(),
+                    request.getMonth(),
+                    request.getYear(),
+                    Boolean.TRUE.equals(request.getManualPayslip())
+            ));
+        } catch (RuntimeException ex) {
+            return ResponseEntity.badRequest().body(Map.of("error", ex.getMessage()));
+        }
     }
 
     private ResponseEntity<?> processPayrollAndBuildExcelResponse(PayrollProcessRequestDTO request) {
@@ -208,6 +276,48 @@ public class PayrollController {
 
         public void setStatus(String status) {
             this.status = status;
+        }
+    }
+
+    public static class PayslipModeUpdateRequest {
+        private Long employeeId;
+        private Integer month;
+        private Integer year;
+        private Boolean manualPayslip;
+
+        public PayslipModeUpdateRequest() {
+        }
+
+        public Long getEmployeeId() {
+            return employeeId;
+        }
+
+        public void setEmployeeId(Long employeeId) {
+            this.employeeId = employeeId;
+        }
+
+        public Integer getMonth() {
+            return month;
+        }
+
+        public void setMonth(Integer month) {
+            this.month = month;
+        }
+
+        public Integer getYear() {
+            return year;
+        }
+
+        public void setYear(Integer year) {
+            this.year = year;
+        }
+
+        public Boolean getManualPayslip() {
+            return manualPayslip;
+        }
+
+        public void setManualPayslip(Boolean manualPayslip) {
+            this.manualPayslip = manualPayslip;
         }
     }
 }

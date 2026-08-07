@@ -51,6 +51,20 @@ public class Payroll {
     @Column(name = "payroll_year", nullable = false)
     private Integer year;
 
+    @Column(name = "manual_payslip", nullable = false)
+    private boolean manualPayslip;
+
+    @Lob
+    @Basic(fetch = FetchType.LAZY)
+    @Column(name = "payslip_data", columnDefinition = "LONGBLOB")
+    private byte[] payslipData;
+
+    @Column(name = "payslip_file_name")
+    private String payslipFileName;
+
+    @Column(name = "payslip_content_type")
+    private String payslipContentType;
+
     public Payroll() {
     }
 
@@ -164,5 +178,37 @@ public class Payroll {
 
     public void setYear(Integer year) {
         this.year = year;
+    }
+
+    public boolean isManualPayslip() {
+        return manualPayslip;
+    }
+
+    public void setManualPayslip(boolean manualPayslip) {
+        this.manualPayslip = manualPayslip;
+    }
+
+    public byte[] getPayslipData() {
+        return payslipData;
+    }
+
+    public void setPayslipData(byte[] payslipData) {
+        this.payslipData = payslipData;
+    }
+
+    public String getPayslipFileName() {
+        return payslipFileName;
+    }
+
+    public void setPayslipFileName(String payslipFileName) {
+        this.payslipFileName = payslipFileName;
+    }
+
+    public String getPayslipContentType() {
+        return payslipContentType;
+    }
+
+    public void setPayslipContentType(String payslipContentType) {
+        this.payslipContentType = payslipContentType;
     }
 }

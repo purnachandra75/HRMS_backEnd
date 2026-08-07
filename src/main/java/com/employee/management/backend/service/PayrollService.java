@@ -4,6 +4,7 @@ import com.employee.management.backend.Entity.Employee;
 import com.employee.management.backend.Entity.LeaveRequest;
 import com.employee.management.backend.Entity.Payroll;
 import com.employee.management.backend.Entity.SalaryDetails;
+import com.employee.management.backend.dto.DocumentFile;
 import com.employee.management.backend.dto.PayrollEmployeeRequestDTO;
 import com.employee.management.backend.dto.PayrollEmployeeResponseDTO;
 import com.employee.management.backend.dto.PayrollProcessRequestDTO;
@@ -12,9 +13,12 @@ import com.employee.management.backend.repository.EmployeeRepository;
 import com.employee.management.backend.repository.HolidayRepository;
 import com.employee.management.backend.repository.LeaveRequestRepository;
 import com.employee.management.backend.repository.PayrollRepository;
+import com.employee.management.backend.security.AuthenticatedUser;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.DayOfWeek;
@@ -110,6 +114,82 @@ public class PayrollService {
         payroll.setCreditStatus(status.trim());
         Payroll updatedPayroll = payrollRepository.save(payroll);
         return convertPayrollToResponse(updatedPayroll);
+    }
+
+    @Transactional
+    public PayrollEmployeeResponseDTO updatePayslipMode(Long payrollId,
+                                                         Long employeeId,
+                                                         Integer month,
+                                                         Integer year,
+                                                         boolean manualPayslip) {
+        Payroll payroll = payrollRepository.findById(payrollId)
+                .orElseGet(() -> findPayrollByEmployeeMonthAndYear(employeeId, month, year));
+
+        payroll.setManualPayslip(manualPayslip);
+        Payroll updatedPayroll = payrollRepository.save(payroll);
+        return convertPayrollToResponse(updatedPayroll);
+    }
+
+    @Transactional
+    public PayrollEmployeeResponseDTO uploadManualPayslip(Long payrollId, MultipartFile file) {
+        if (file == null || file.isEmpty()) {
+            throw new RuntimeException("A payslip file is required");
+        }
+
+        Payroll payroll = payrollRepository.findById(payrollId)
+                .orElseThrow(() -> new RuntimeException("Payroll record not found"));
+
+        try {
+            payroll.setPayslipData(file.getBytes());
+        } catch (IOException ex) {
+            throw new RuntimeException("Failed to read uploaded payslip file");
+        }
+        payroll.setPayslipFileName(file.getOriginalFilename());
+        payroll.setPayslipContentType(file.getContentType());
+        payroll.setManualPayslip(true);
+
+        Payroll updatedPayroll = payrollRepository.save(payroll);
+        return convertPayrollToResponse(updatedPayroll);
+    }
+
+    @Transactional(readOnly = true)
+    public DocumentFile getManualPayslip(Long payrollId, AuthenticatedUser requester) {
+        Payroll payroll = payrollRepository.findById(payrollId)
+                .orElseThrow(() -> new RuntimeException("Payroll record not found"));
+
+        boolean isAdmin = requester != null && "ADMIN".equalsIgnoreCase(requester.role());
+        boolean isOwner = requester != null && requester.empId() != null
+                && requester.empId().equals(payroll.getEmployeeId());
+        if (!isAdmin && !isOwner) {
+            throw new SecurityException("Not authorized to view this payslip");
+        }
+
+        if (!isCredited(payroll.getCreditStatus())) {
+            throw new RuntimeException("Payslip is not available until the amount is credited");
+        }
+
+        if (payroll.getPayslipData() == null) {
+            throw new RuntimeException("No payslip has been uploaded for this record");
+        }
+
+        return new DocumentFile(
+                payroll.getPayslipFileName(),
+                payroll.getPayslipContentType(),
+                payroll.getPayslipData().length,
+                payroll.getPayslipData()
+        );
+    }
+
+    private boolean isCredited(String creditStatus) {
+        if (creditStatus == null) {
+            return false;
+        }
+        String value = creditStatus.trim().toLowerCase();
+        return value.equals("credited")
+                || value.equals("amount credited")
+                || value.equals("amount_credited")
+                || value.equals("paid")
+                || value.equals("payment credited");
     }
 
     private PayrollEmployeeResponseDTO processEmployeePayroll(PayrollEmployeeRequestDTO requestedEmployee,
@@ -230,6 +310,8 @@ public class PayrollService {
         response.setCreditStatus(payroll.getCreditStatus());
         response.setMonth(payroll.getMonth());
         response.setYear(payroll.getYear());
+        response.setManualPayslip(payroll.isManualPayslip());
+        response.setHasPayslipFile(payroll.getPayslipData() != null);
 
         Employee employee = employeeRepository.findById(payroll.getEmployeeId()).orElse(null);
         if (employee != null && employee.getSalaryDetails() != null) {
