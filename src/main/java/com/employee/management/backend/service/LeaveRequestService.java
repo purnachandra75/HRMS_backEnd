@@ -16,6 +16,8 @@ import com.employee.management.backend.repository.HolidayRepository;
 import jakarta.mail.internet.MimeMessage;
 import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.stereotype.Service;
@@ -196,6 +198,11 @@ public class LeaveRequestService {
     public List<LeaveRequestDTO> getAllLeaveRequests() {
         List<LeaveRequest> requests = leaveRequestRepository.findAllByOrderByCreatedAtDesc();
         return requests.stream().map(this::convertToDTO).collect(Collectors.toList());
+    }
+
+    public Page<LeaveRequestDTO> getLeaveRequestsPage(String status, Pageable pageable) {
+        Page<LeaveRequest> requests = leaveRequestRepository.filterLeaveRequests(status, pageable);
+        return requests.map(this::convertToDTO);
     }
 
     public List<LeaveRequestDTO> getLeaveRequestsByEmployeeId(Long empId) {

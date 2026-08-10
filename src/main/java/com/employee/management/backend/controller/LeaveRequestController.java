@@ -5,6 +5,8 @@ import com.employee.management.backend.dto.LeaveReportDTO;
 import com.employee.management.backend.dto.LeaveRequestDTO;
 import com.employee.management.backend.dto.UpdateLeaveRequestStatusDTO;
 import com.employee.management.backend.service.LeaveRequestService;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
@@ -22,7 +24,20 @@ public class LeaveRequestController {
     }
 
     @GetMapping
-    public ResponseEntity<List<LeaveRequestDTO>> getAllLeaveRequests() {
+    public ResponseEntity<?> getAllLeaveRequests(
+            @RequestParam(required = false) Integer page,
+            @RequestParam(required = false) Integer size,
+            @RequestParam(required = false) String status) {
+        boolean paginated = page != null || size != null || (status != null && !status.trim().isEmpty());
+        if (paginated) {
+            int normalizedPage = Math.max(page != null ? page : 0, 0);
+            int normalizedSize = Math.max(size != null ? size : 10, 1);
+            String normalizedStatus = (status == null || status.trim().isEmpty() || "all".equalsIgnoreCase(status.trim()))
+                    ? null : status.trim();
+            Page<LeaveRequestDTO> result = leaveRequestService.getLeaveRequestsPage(
+                    normalizedStatus, PageRequest.of(normalizedPage, normalizedSize));
+            return ResponseEntity.ok(result);
+        }
         List<LeaveRequestDTO> requests = leaveRequestService.getAllLeaveRequests();
         return ResponseEntity.ok(requests);
     }
