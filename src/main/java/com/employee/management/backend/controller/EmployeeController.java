@@ -41,19 +41,32 @@ public class EmployeeController {
             @RequestParam(required = false) String search,
             @RequestParam(required = false) String department,
             @RequestParam(required = false) String status,
-            @RequestParam(required = false) String employeeType) {
+            @RequestParam(required = false) String employeeType,
+            @RequestParam(required = false) String joinedFrom,
+            @RequestParam(required = false) String joinedTo) {
         int normalizedPage = Math.max(page, 0);
         int normalizedSize = Math.max(size, 1);
         String normalizedSearch = (search == null || search.trim().isEmpty()) ? null : search.trim();
         String normalizedDepartment = normalizeFilterValue(department);
         String normalizedStatus = normalizeFilterValue(status);
         String normalizedEmployeeType = normalizeFilterValue(employeeType);
+        String normalizedJoinedFrom = normalizeFilterValue(joinedFrom);
+        String normalizedJoinedTo = normalizeFilterValue(joinedTo);
         if (normalizedSearch != null) {
             return employeeService.searchEmployees(
                     normalizedSearch,
                     normalizedDepartment,
                     normalizedStatus,
                     normalizedEmployeeType,
+                    PageRequest.of(normalizedPage, normalizedSize)
+            );
+        }
+        if (normalizedJoinedFrom != null || normalizedJoinedTo != null) {
+            return employeeService.filterEmployeesByJoinDate(
+                    normalizedDepartment,
+                    normalizedStatus,
+                    normalizedJoinedFrom,
+                    normalizedJoinedTo,
                     PageRequest.of(normalizedPage, normalizedSize)
             );
         }

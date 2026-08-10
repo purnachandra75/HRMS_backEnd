@@ -105,6 +105,24 @@ public class EmployeeServiceImpl implements EmployeeService {
         return employeeRepository.filterEmployees(normalizedDepartment, normalizedStatus, safePageable);
     }
 
+    @Override
+    public Page<Employee> filterEmployeesByJoinDate(String department, String status, String fromDate, String toDate, Pageable pageable) {
+        if (pageable == null) {
+            pageable = PageRequest.of(0, 10);
+        }
+
+        String normalizedDepartment = department == null ? "" : department.trim();
+        String normalizedStatus = status == null ? "" : status.trim();
+        String normalizedFromDate = fromDate == null ? "" : fromDate.trim();
+        String normalizedToDate = toDate == null ? "" : toDate.trim();
+        int pageNumber = Math.max(pageable.getPageNumber(), 0);
+        int pageSize = Math.max(pageable.getPageSize(), 1);
+        Pageable safePageable = PageRequest.of(pageNumber, pageSize, pageable.getSort());
+
+        return employeeRepository.filterEmployeesByJoinDate(
+                normalizedDepartment, normalizedStatus, normalizedFromDate, normalizedToDate, safePageable);
+    }
+
     private boolean isNumeric(String value) {
         try {
             Long.parseLong(value);

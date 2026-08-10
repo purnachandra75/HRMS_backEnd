@@ -37,6 +37,20 @@ public interface EmployeeRepository extends JpaRepository<Employee, Long> {
                                     @Param("status") String status,
                                     Pageable pageable);
 
+    // dateOfJoining is stored as a plain "yyyy-MM-dd" string, which sorts/compares
+    // correctly as a string for ISO date ranges - no date parsing needed here.
+    @Query("SELECT e FROM Employee e LEFT JOIN e.jobDetails jd WHERE " +
+            "(:department IS NULL OR :department = '' OR TRIM(LOWER(COALESCE(jd.department, ''))) = TRIM(LOWER(:department))) AND " +
+            "(:status IS NULL OR :status = '' OR TRIM(LOWER(COALESCE(jd.employeeStatus, ''))) = TRIM(LOWER(:status))) AND " +
+            "((:status IS NOT NULL AND TRIM(LOWER(:status)) = 'inactive') OR TRIM(LOWER(COALESCE(jd.employeeStatus, ''))) <> 'inactive') AND " +
+            "(:fromDate IS NULL OR :fromDate = '' OR jd.dateOfJoining >= :fromDate) AND " +
+            "(:toDate IS NULL OR :toDate = '' OR jd.dateOfJoining <= :toDate)")
+    Page<Employee> filterEmployeesByJoinDate(@Param("department") String department,
+                                              @Param("status") String status,
+                                              @Param("fromDate") String fromDate,
+                                              @Param("toDate") String toDate,
+                                              Pageable pageable);
+
         @Query("SELECT e FROM Employee e LEFT JOIN e.jobDetails jd WHERE TRIM(LOWER(COALESCE(jd.employeeStatus, ''))) <> 'inactive'")
     Page<Employee> findAllActive(Pageable pageable);
 
