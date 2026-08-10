@@ -16,8 +16,19 @@ public interface LeaveRequestRepository extends JpaRepository<LeaveRequest, Long
     List<LeaveRequest> findByEmployeeEmpIdOrderByCreatedAtDesc(Long empId);
     List<LeaveRequest> findAllByOrderByCreatedAtDesc();
 
-    @Query("SELECT lr FROM LeaveRequest lr WHERE " +
-            "(:status IS NULL OR :status = '' OR TRIM(LOWER(lr.status)) = TRIM(LOWER(:status))) " +
+    @Query("SELECT lr FROM LeaveRequest lr JOIN lr.employee e WHERE " +
+            "(:status IS NULL OR :status = '' OR TRIM(LOWER(lr.status)) = TRIM(LOWER(:status))) AND " +
+            "(:searchId IS NULL OR e.empId = :searchId) AND " +
+            "(:searchName IS NULL OR :searchName = '' OR " +
+            "  LOWER(CONCAT(COALESCE(e.firstName, ''), ' ', COALESCE(e.lastName, ''))) LIKE LOWER(CONCAT('%', :searchName, '%'))) AND " +
+            "(:year IS NULL OR :month IS NULL OR " +
+            "  (FUNCTION('YEAR', lr.fromDate) = :year AND FUNCTION('MONTH', lr.fromDate) = :month) OR " +
+            "  (FUNCTION('YEAR', lr.toDate) = :year AND FUNCTION('MONTH', lr.toDate) = :month)) " +
             "ORDER BY lr.createdAt DESC")
-    Page<LeaveRequest> filterLeaveRequests(@Param("status") String status, Pageable pageable);
+    Page<LeaveRequest> filterLeaveRequests(@Param("status") String status,
+                                            @Param("searchId") Long searchId,
+                                            @Param("searchName") String searchName,
+                                            @Param("year") Integer year,
+                                            @Param("month") Integer month,
+                                            Pageable pageable);
 }

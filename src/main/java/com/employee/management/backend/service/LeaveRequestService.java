@@ -200,8 +200,10 @@ public class LeaveRequestService {
         return requests.stream().map(this::convertToDTO).collect(Collectors.toList());
     }
 
-    public Page<LeaveRequestDTO> getLeaveRequestsPage(String status, Pageable pageable) {
-        Page<LeaveRequest> requests = leaveRequestRepository.filterLeaveRequests(status, pageable);
+    public Page<LeaveRequestDTO> getLeaveRequestsPage(String status, Long searchId, String searchName,
+                                                       Integer year, Integer month, Pageable pageable) {
+        Page<LeaveRequest> requests = leaveRequestRepository.filterLeaveRequests(
+                status, searchId, searchName, year, month, pageable);
         return requests.map(this::convertToDTO);
     }
 

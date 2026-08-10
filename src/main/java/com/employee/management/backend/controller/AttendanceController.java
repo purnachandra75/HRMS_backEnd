@@ -30,14 +30,58 @@ public class AttendanceController {
 
     @GetMapping
     public List<AttendanceResponse> getAllAttendance(@RequestParam(required = false) Long employeeId,
-                                                     @RequestParam(required = false) String month) {
+                                                     @RequestParam(required = false) String month,
+                                                     @RequestParam(required = false) Integer year,
+                                                     @RequestParam(required = false) Integer monthNumber,
+                                                     @RequestParam(required = false) String search) {
         List<Attendance> attendanceList = attendanceRepository.findAll();
+
+        String normalizedSearch = (search == null || search.trim().isEmpty()) ? null : search.trim();
+        Long searchId = null;
+        String searchName = null;
+        if (normalizedSearch != null) {
+            if (normalizedSearch.matches("\\d+")) {
+                searchId = Long.parseLong(normalizedSearch);
+            } else {
+                searchName = normalizedSearch.toLowerCase();
+            }
+        }
+        final Long finalSearchId = searchId;
+        final String finalSearchName = searchName;
+
         return attendanceList.stream()
-                .filter(record -> employeeId == null || record.getEmployee().getEmpId().equals(employeeId))
+                .filter(record -> employeeId == null
+                        || (record.getEmployee() != null && record.getEmployee().getEmpId().equals(employeeId)))
+                // exact-ID search: never match "1" against 10, 11, 12...
+                .filter(record -> finalSearchId == null
+                        || (record.getEmployee() != null && finalSearchId.equals(record.getEmployee().getEmpId())))
+                // name search stays a substring match, since that's expected for names
+                .filter(record -> {
+                    if (finalSearchName == null) return true;
+                    if (record.getEmployee() == null) return false;
+                    String fullName = String.format("%s %s",
+                            record.getEmployee().getFirstName() == null ? "" : record.getEmployee().getFirstName(),
+                            record.getEmployee().getLastName() == null ? "" : record.getEmployee().getLastName())
+                            .trim().toLowerCase();
+                    return fullName.contains(finalSearchName);
+                })
                 .filter(record -> {
                     if (month == null || month.isBlank()) return true;
                     if (record.getDate() == null) return false;
                     return record.getDate().startsWith(month);
+                })
+                .filter(record -> {
+                    if (year == null && monthNumber == null) return true;
+                    if (record.getDate() == null || record.getDate().length() < 7) return false;
+                    try {
+                        int recordYear = Integer.parseInt(record.getDate().substring(0, 4));
+                        int recordMonth = Integer.parseInt(record.getDate().substring(5, 7));
+                        boolean yearOk = year == null || recordYear == year;
+                        boolean monthOk = monthNumber == null || recordMonth == monthNumber;
+                        return yearOk && monthOk;
+                    } catch (NumberFormatException ex) {
+                        return false;
+                    }
                 })
                 .map(AttendanceResponse::fromAttendance)
                 .toList();

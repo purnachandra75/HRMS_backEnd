@@ -27,15 +27,34 @@ public class LeaveRequestController {
     public ResponseEntity<?> getAllLeaveRequests(
             @RequestParam(required = false) Integer page,
             @RequestParam(required = false) Integer size,
-            @RequestParam(required = false) String status) {
-        boolean paginated = page != null || size != null || (status != null && !status.trim().isEmpty());
+            @RequestParam(required = false) String status,
+            @RequestParam(required = false) String search,
+            @RequestParam(required = false) Integer year,
+            @RequestParam(required = false) Integer month) {
+        boolean hasSearch = search != null && !search.trim().isEmpty();
+        boolean hasMonthYear = year != null && month != null;
+        boolean paginated = page != null || size != null || (status != null && !status.trim().isEmpty())
+                || hasSearch || hasMonthYear;
         if (paginated) {
             int normalizedPage = Math.max(page != null ? page : 0, 0);
             int normalizedSize = Math.max(size != null ? size : 10, 1);
             String normalizedStatus = (status == null || status.trim().isEmpty() || "all".equalsIgnoreCase(status.trim()))
                     ? null : status.trim();
+
+            Long searchId = null;
+            String searchName = null;
+            if (hasSearch) {
+                String trimmedSearch = search.trim();
+                if (trimmedSearch.matches("\\d+")) {
+                    searchId = Long.parseLong(trimmedSearch);
+                } else {
+                    searchName = trimmedSearch;
+                }
+            }
+
             Page<LeaveRequestDTO> result = leaveRequestService.getLeaveRequestsPage(
-                    normalizedStatus, PageRequest.of(normalizedPage, normalizedSize));
+                    normalizedStatus, searchId, searchName, year, month,
+                    PageRequest.of(normalizedPage, normalizedSize));
             return ResponseEntity.ok(result);
         }
         List<LeaveRequestDTO> requests = leaveRequestService.getAllLeaveRequests();
