@@ -38,6 +38,7 @@ com\employee\management\backend\dto\CreateHolidayDTO.class
 com\employee\management\backend\dto\UpdateHolidayDTO.class
 com\employee\management\backend\exception\ResourceNotFoundException.class
 com\employee\management\backend\dto\UpdateLeaveRequestStatusDTO.class
+com\employee\management\backend\controller\AttendanceReportController.class
 com\employee\management\backend\Entity\PasswordResetToken.class
 com\employee\management\backend\controller\EmployeeController.class
 com\employee\management\backend\security\JwtUtil.class
@@ -83,3 +84,4 @@ com\employee\management\backend\Entity\AddressDetails.class
 com\employee\management\backend\controller\LeaveRequestController$ErrorResponse.class
 com\employee\management\backend\dto\PayrollEmployeeRequestDTO.class
 com\employee\management\backend\repository\LeaveRequestRepository.class
+com\employee\management\backend\controller\AttendanceReportController$AttendanceReportRowDTO.class
