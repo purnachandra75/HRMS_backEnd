@@ -18,6 +18,10 @@ public class DocumentDetails {
     private String experienceCertificates;
     private String passportPhoto;
 
+    private String passportNumber;
+    private String drivingLicense;
+    private String licenseExpiryDate;
+
     @Lob
     @Basic(fetch = FetchType.LAZY)
     @JsonIgnore
@@ -65,6 +69,46 @@ public class DocumentDetails {
     private byte[] passportPhotoData;
     private String passportPhotoName;
     private String passportPhotoContentType;
+
+    @Lob
+    @Basic(fetch = FetchType.LAZY)
+    @JsonIgnore
+    @Column(columnDefinition = "LONGBLOB")
+    private byte[] tenthCertificateData;
+    private String tenthCertificateName;
+    private String tenthCertificateContentType;
+
+    @Lob
+    @Basic(fetch = FetchType.LAZY)
+    @JsonIgnore
+    @Column(columnDefinition = "LONGBLOB")
+    private byte[] intermediateMarksheetData;
+    private String intermediateMarksheetName;
+    private String intermediateMarksheetContentType;
+
+    @Lob
+    @Basic(fetch = FetchType.LAZY)
+    @JsonIgnore
+    @Column(columnDefinition = "LONGBLOB")
+    private byte[] provisionalCertificateData;
+    private String provisionalCertificateName;
+    private String provisionalCertificateContentType;
+
+    @Lob
+    @Basic(fetch = FetchType.LAZY)
+    @JsonIgnore
+    @Column(columnDefinition = "LONGBLOB")
+    private byte[] originalDegreeData;
+    private String originalDegreeName;
+    private String originalDegreeContentType;
+
+    @Lob
+    @Basic(fetch = FetchType.LAZY)
+    @JsonIgnore
+    @Column(columnDefinition = "LONGBLOB")
+    private byte[] aadhaarUploadData;
+    private String aadhaarUploadName;
+    private String aadhaarUploadContentType;
 
     @OneToOne(fetch = FetchType.LAZY)
     @MapsId
@@ -270,6 +314,150 @@ public class DocumentDetails {
 
     public void setPassportPhotoContentType(String passportPhotoContentType) {
         this.passportPhotoContentType = passportPhotoContentType;
+    }
+
+    public String getPassportNumber() {
+        return passportNumber;
+    }
+
+    public void setPassportNumber(String passportNumber) {
+        this.passportNumber = passportNumber;
+    }
+
+    public String getDrivingLicense() {
+        return drivingLicense;
+    }
+
+    public void setDrivingLicense(String drivingLicense) {
+        this.drivingLicense = drivingLicense;
+    }
+
+    public String getLicenseExpiryDate() {
+        return licenseExpiryDate;
+    }
+
+    public void setLicenseExpiryDate(String licenseExpiryDate) {
+        this.licenseExpiryDate = licenseExpiryDate;
+    }
+
+    public byte[] getTenthCertificateData() {
+        return tenthCertificateData;
+    }
+
+    public void setTenthCertificateData(byte[] tenthCertificateData) {
+        this.tenthCertificateData = tenthCertificateData;
+    }
+
+    public String getTenthCertificateName() {
+        return tenthCertificateName;
+    }
+
+    public void setTenthCertificateName(String tenthCertificateName) {
+        this.tenthCertificateName = tenthCertificateName;
+    }
+
+    public String getTenthCertificateContentType() {
+        return tenthCertificateContentType;
+    }
+
+    public void setTenthCertificateContentType(String tenthCertificateContentType) {
+        this.tenthCertificateContentType = tenthCertificateContentType;
+    }
+
+    public byte[] getIntermediateMarksheetData() {
+        return intermediateMarksheetData;
+    }
+
+    public void setIntermediateMarksheetData(byte[] intermediateMarksheetData) {
+        this.intermediateMarksheetData = intermediateMarksheetData;
+    }
+
+    public String getIntermediateMarksheetName() {
+        return intermediateMarksheetName;
+    }
+
+    public void setIntermediateMarksheetName(String intermediateMarksheetName) {
+        this.intermediateMarksheetName = intermediateMarksheetName;
+    }
+
+    public String getIntermediateMarksheetContentType() {
+        return intermediateMarksheetContentType;
+    }
+
+    public void setIntermediateMarksheetContentType(String intermediateMarksheetContentType) {
+        this.intermediateMarksheetContentType = intermediateMarksheetContentType;
+    }
+
+    public byte[] getProvisionalCertificateData() {
+        return provisionalCertificateData;
+    }
+
+    public void setProvisionalCertificateData(byte[] provisionalCertificateData) {
+        this.provisionalCertificateData = provisionalCertificateData;
+    }
+
+    public String getProvisionalCertificateName() {
+        return provisionalCertificateName;
+    }
+
+    public void setProvisionalCertificateName(String provisionalCertificateName) {
+        this.provisionalCertificateName = provisionalCertificateName;
+    }
+
+    public String getProvisionalCertificateContentType() {
+        return provisionalCertificateContentType;
+    }
+
+    public void setProvisionalCertificateContentType(String provisionalCertificateContentType) {
+        this.provisionalCertificateContentType = provisionalCertificateContentType;
+    }
+
+    public byte[] getOriginalDegreeData() {
+        return originalDegreeData;
+    }
+
+    public void setOriginalDegreeData(byte[] originalDegreeData) {
+        this.originalDegreeData = originalDegreeData;
+    }
+
+    public String getOriginalDegreeName() {
+        return originalDegreeName;
+    }
+
+    public void setOriginalDegreeName(String originalDegreeName) {
+        this.originalDegreeName = originalDegreeName;
+    }
+
+    public String getOriginalDegreeContentType() {
+        return originalDegreeContentType;
+    }
+
+    public void setOriginalDegreeContentType(String originalDegreeContentType) {
+        this.originalDegreeContentType = originalDegreeContentType;
+    }
+
+    public byte[] getAadhaarUploadData() {
+        return aadhaarUploadData;
+    }
+
+    public void setAadhaarUploadData(byte[] aadhaarUploadData) {
+        this.aadhaarUploadData = aadhaarUploadData;
+    }
+
+    public String getAadhaarUploadName() {
+        return aadhaarUploadName;
+    }
+
+    public void setAadhaarUploadName(String aadhaarUploadName) {
+        this.aadhaarUploadName = aadhaarUploadName;
+    }
+
+    public String getAadhaarUploadContentType() {
+        return aadhaarUploadContentType;
+    }
+
+    public void setAadhaarUploadContentType(String aadhaarUploadContentType) {
+        this.aadhaarUploadContentType = aadhaarUploadContentType;
     }
 
     public Employee getEmployee() {

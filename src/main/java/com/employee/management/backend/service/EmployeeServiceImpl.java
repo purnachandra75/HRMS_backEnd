@@ -10,6 +10,7 @@ import com.employee.management.backend.Entity.LeaveBalance;
 import com.employee.management.backend.Entity.ProjectHistory;
 import com.employee.management.backend.Entity.SalaryDetails;
 import com.employee.management.backend.exception.ResourceNotFoundException;
+import com.employee.management.backend.repository.DocumentDetailsRepository;
 import com.employee.management.backend.repository.EmployeeRepository;
 import com.employee.management.backend.repository.LeaveBalanceRepository;
 import com.employee.management.backend.dto.DocumentFile;
@@ -32,10 +33,13 @@ public class EmployeeServiceImpl implements EmployeeService {
 
     private final EmployeeRepository employeeRepository;
     private final LeaveBalanceRepository leaveBalanceRepository;
+    private final DocumentDetailsRepository documentDetailsRepository;
 
-    public EmployeeServiceImpl(EmployeeRepository employeeRepository, LeaveBalanceRepository leaveBalanceRepository) {
+    public EmployeeServiceImpl(EmployeeRepository employeeRepository, LeaveBalanceRepository leaveBalanceRepository,
+                                DocumentDetailsRepository documentDetailsRepository) {
         this.employeeRepository = employeeRepository;
         this.leaveBalanceRepository = leaveBalanceRepository;
+        this.documentDetailsRepository = documentDetailsRepository;
     }
 
     @Override
@@ -158,6 +162,9 @@ public class EmployeeServiceImpl implements EmployeeService {
         linkChildEntities(employee);
         syncProjectHistoryWithWorkStatus(employee, null, null);
         Employee saved = employeeRepository.save(employee);
+        if (saved.getDocumentDetails() != null) {
+            documentDetailsRepository.save(saved.getDocumentDetails());
+        }
         seedDefaultLeaveBalances(saved);
         return saved;
     }
@@ -177,7 +184,11 @@ public class EmployeeServiceImpl implements EmployeeService {
         Employee existing = findById(empId);
         applyUpdates(existing, employee);
         linkChildEntities(existing);
-        return employeeRepository.save(existing);
+        Employee saved = employeeRepository.save(existing);
+        if (saved.getDocumentDetails() != null) {
+            documentDetailsRepository.save(saved.getDocumentDetails());
+        }
+        return saved;
     }
 
     @Override
@@ -243,10 +254,39 @@ public class EmployeeServiceImpl implements EmployeeService {
                     details.setPassportPhotoName(file.getOriginalFilename());
                     details.setPassportPhotoContentType(file.getContentType());
                     break;
+                case "tenthcertificate":
+                    details.setTenthCertificateData(data);
+                    details.setTenthCertificateName(file.getOriginalFilename());
+                    details.setTenthCertificateContentType(file.getContentType());
+                    break;
+                case "intermediatemarksheet":
+                    details.setIntermediateMarksheetData(data);
+                    details.setIntermediateMarksheetName(file.getOriginalFilename());
+                    details.setIntermediateMarksheetContentType(file.getContentType());
+                    break;
+                case "provisionalcertificate":
+                    details.setProvisionalCertificateData(data);
+                    details.setProvisionalCertificateName(file.getOriginalFilename());
+                    details.setProvisionalCertificateContentType(file.getContentType());
+                    break;
+                case "originaldegree":
+                    details.setOriginalDegreeData(data);
+                    details.setOriginalDegreeName(file.getOriginalFilename());
+                    details.setOriginalDegreeContentType(file.getContentType());
+                    break;
+                case "aadhaarupload":
+                    details.setAadhaarUploadData(data);
+                    details.setAadhaarUploadName(file.getOriginalFilename());
+                    details.setAadhaarUploadContentType(file.getContentType());
+                    break;
                 default:
                     throw new IllegalArgumentException("Unsupported document type: " + docType);
             }
-            employeeRepository.save(employee);
+            // Saved directly through its own repository (rather than only cascading via
+            // employeeRepository.save) so a brand-new @MapsId DocumentDetails row is
+            // guaranteed to flush - relying solely on cascade-through-merge here was
+            // silently not persisting the row for employees that had no prior document.
+            documentDetailsRepository.save(details);
         } catch (Exception ex) {
             throw new RuntimeException("Could not store document file", ex);
         }
@@ -273,6 +313,16 @@ public class EmployeeServiceImpl implements EmployeeService {
                 return toDocumentFile(details.getExperienceCertificatesData(), details.getExperienceCertificatesName(), details.getExperienceCertificatesContentType());
             case "passport":
                 return toDocumentFile(details.getPassportPhotoData(), details.getPassportPhotoName(), details.getPassportPhotoContentType());
+            case "tenthcertificate":
+                return toDocumentFile(details.getTenthCertificateData(), details.getTenthCertificateName(), details.getTenthCertificateContentType());
+            case "intermediatemarksheet":
+                return toDocumentFile(details.getIntermediateMarksheetData(), details.getIntermediateMarksheetName(), details.getIntermediateMarksheetContentType());
+            case "provisionalcertificate":
+                return toDocumentFile(details.getProvisionalCertificateData(), details.getProvisionalCertificateName(), details.getProvisionalCertificateContentType());
+            case "originaldegree":
+                return toDocumentFile(details.getOriginalDegreeData(), details.getOriginalDegreeName(), details.getOriginalDegreeContentType());
+            case "aadhaarupload":
+                return toDocumentFile(details.getAadhaarUploadData(), details.getAadhaarUploadName(), details.getAadhaarUploadContentType());
             default:
                 throw new IllegalArgumentException("Unsupported document type: " + docType);
         }
@@ -490,6 +540,9 @@ public class EmployeeServiceImpl implements EmployeeService {
             existing.setEducationalCertificates(incoming.getEducationalCertificates());
             existing.setExperienceCertificates(incoming.getExperienceCertificates());
             existing.setPassportPhoto(incoming.getPassportPhoto());
+            existing.setPassportNumber(incoming.getPassportNumber());
+            existing.setDrivingLicense(incoming.getDrivingLicense());
+            existing.setLicenseExpiryDate(incoming.getLicenseExpiryDate());
         }
     }
 
