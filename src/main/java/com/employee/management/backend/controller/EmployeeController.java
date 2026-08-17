@@ -4,6 +4,7 @@ import com.employee.management.backend.Entity.Employee;
 import com.employee.management.backend.dto.DocumentFile;
 import com.employee.management.backend.security.JwtUtil;
 import com.employee.management.backend.service.EmployeeService;
+import com.employee.management.backend.service.OtpService;
 import com.employee.management.backend.service.PasswordResetService;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import org.springframework.data.domain.Page;
@@ -25,13 +26,15 @@ public class EmployeeController {
     private final PasswordEncoder passwordEncoder;
     private final JwtUtil jwtUtil;
     private final PasswordResetService passwordResetService;
+    private final OtpService otpService;
 
     public EmployeeController(EmployeeService employeeService, PasswordEncoder passwordEncoder, JwtUtil jwtUtil,
-                               PasswordResetService passwordResetService) {
+                               PasswordResetService passwordResetService, OtpService otpService) {
         this.employeeService = employeeService;
         this.passwordEncoder = passwordEncoder;
         this.jwtUtil = jwtUtil;
         this.passwordResetService = passwordResetService;
+        this.otpService = otpService;
     }
 
     @GetMapping({"", "/getemployee"})
@@ -139,11 +142,58 @@ public class EmployeeController {
             if (!isPasswordValid(storedPassword, providedPassword, employee.getEmpId())) {
                 return ResponseEntity.badRequest().body(new ApiResponse(false, "Invalid email or password"));
             }
+
+            try {
+                otpService.generateAndSendOtp(employee);
+            } catch (Exception ex) {
+                System.out.println("Failed to send OTP: " + ex.getMessage());
+                ex.printStackTrace();
+                return ResponseEntity.internalServerError()
+                        .body(new ApiResponse(false, "Failed to send verification code. Please try again."));
+            }
+            return ResponseEntity.ok(new OtpRequiredResponse(employee.getEmpId(), employee.getEmail(),
+                    "A verification code has been sent to your registered email."));
+        } catch (Exception ex) {
+            return ResponseEntity.badRequest().body(new ApiResponse(false, "Invalid email or password"));
+        }
+    }
+
+    @PostMapping("/verify-otp")
+    public ResponseEntity<?> verifyOtp(@RequestBody VerifyOtpRequest request) {
+        if (request.getUserId() == null) {
+            return ResponseEntity.badRequest().body(new ApiResponse(false, "User is required"));
+        }
+        if (request.getOtp() == null || request.getOtp().trim().isEmpty()) {
+            return ResponseEntity.badRequest().body(new ApiResponse(false, "Verification code is required"));
+        }
+
+        try {
+            otpService.verifyOtp(request.getUserId(), request.getOtp());
+            Employee employee = employeeService.findById(request.getUserId());
             String name = String.format("%s %s", employee.getFirstName(), employee.getLastName()).trim();
             String token = jwtUtil.generateToken(employee.getEmpId(), employee.getEmail(), employee.getRole());
             return ResponseEntity.ok(new LoginResponse(employee.getEmpId(), name, employee.getEmail(), employee.getRole(), token));
+        } catch (IllegalArgumentException ex) {
+            return ResponseEntity.badRequest().body(new ApiResponse(false, ex.getMessage()));
         } catch (Exception ex) {
-            return ResponseEntity.badRequest().body(new ApiResponse(false, "Invalid email or password"));
+            return ResponseEntity.badRequest().body(new ApiResponse(false, "Failed to verify code"));
+        }
+    }
+
+    @PostMapping("/resend-otp")
+    public ResponseEntity<ApiResponse> resendOtp(@RequestBody ResendOtpRequest request) {
+        if (request.getUserId() == null) {
+            return ResponseEntity.badRequest().body(new ApiResponse(false, "User is required"));
+        }
+
+        try {
+            Employee employee = employeeService.findById(request.getUserId());
+            otpService.generateAndSendOtp(employee);
+            return ResponseEntity.ok(new ApiResponse(true, "A new verification code has been sent to your email."));
+        } catch (Exception ex) {
+            System.out.println("Failed to resend OTP: " + ex.getMessage());
+            ex.printStackTrace();
+            return ResponseEntity.badRequest().body(new ApiResponse(false, "Failed to resend verification code"));
         }
     }
 
@@ -260,6 +310,74 @@ public class EmployeeController {
 
         public void setPassword(String password) {
             this.password = password;
+        }
+    }
+
+    public static class VerifyOtpRequest {
+        @JsonProperty("userId")
+        private Long userId;
+        @JsonProperty("otp")
+        private String otp;
+
+        public Long getUserId() {
+            return userId;
+        }
+
+        public void setUserId(Long userId) {
+            this.userId = userId;
+        }
+
+        public String getOtp() {
+            return otp;
+        }
+
+        public void setOtp(String otp) {
+            this.otp = otp;
+        }
+    }
+
+    public static class ResendOtpRequest {
+        @JsonProperty("userId")
+        private Long userId;
+
+        public Long getUserId() {
+            return userId;
+        }
+
+        public void setUserId(Long userId) {
+            this.userId = userId;
+        }
+    }
+
+    public static class OtpRequiredResponse {
+        private final boolean otpRequired = true;
+        private Long userId;
+        private String email;
+        private String message;
+
+        public OtpRequiredResponse() {
+        }
+
+        public OtpRequiredResponse(Long userId, String email, String message) {
+            this.userId = userId;
+            this.email = email;
+            this.message = message;
+        }
+
+        public boolean isOtpRequired() {
+            return otpRequired;
+        }
+
+        public Long getUserId() {
+            return userId;
+        }
+
+        public String getEmail() {
+            return email;
+        }
+
+        public String getMessage() {
+            return message;
         }
     }
 

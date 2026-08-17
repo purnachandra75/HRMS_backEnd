@@ -1,4 +1,5 @@
 C:\Users\user\Documents\project\HRMS_backEnd\src\main\java\com\employee\management\backend\dto\CreateHolidayDTO.java
+C:\Users\user\Documents\project\HRMS_backEnd\src\main\java\com\employee\management\backend\service\OtpService.java
 C:\Users\user\Documents\project\HRMS_backEnd\src\main\java\com\employee\management\backend\service\PayrollService.java
 C:\Users\user\Documents\project\HRMS_backEnd\src\main\java\com\employee\management\backend\repository\SalaryDetailsRepository.java
 C:\Users\user\Documents\project\HRMS_backEnd\src\main\java\com\employee\management\backend\controller\ReportsController.java
@@ -6,6 +7,7 @@ C:\Users\user\Documents\project\HRMS_backEnd\src\main\java\com\employee\manageme
 C:\Users\user\Documents\project\HRMS_backEnd\src\main\java\com\employee\management\backend\Entity\Holiday.java
 C:\Users\user\Documents\project\HRMS_backEnd\src\main\java\com\employee\management\backend\controller\PayrollController.java
 C:\Users\user\Documents\project\HRMS_backEnd\src\main\java\com\employee\management\backend\Entity\Attendance.java
+C:\Users\user\Documents\project\HRMS_backEnd\src\main\java\com\employee\management\backend\Entity\OtpVerification.java
 C:\Users\user\Documents\project\HRMS_backEnd\src\main\java\com\employee\management\backend\repository\EmergencyContactRepository.java
 C:\Users\user\Documents\project\HRMS_backEnd\src\main\java\com\employee\management\backend\dto\PayrollProcessResponseDTO.java
 C:\Users\user\Documents\project\HRMS_backEnd\src\main\java\com\employee\management\backend\dto\LeaveReportDTO.java
@@ -39,12 +41,14 @@ C:\Users\user\Documents\project\HRMS_backEnd\src\main\java\com\employee\manageme
 C:\Users\user\Documents\project\HRMS_backEnd\src\main\java\com\employee\management\backend\Entity\EmergencyContact.java
 C:\Users\user\Documents\project\HRMS_backEnd\src\main\java\com\employee\management\backend\config\LeaveInitializer.java
 C:\Users\user\Documents\project\HRMS_backEnd\src\main\java\com\employee\management\backend\exception\GlobalExceptionHandler.java
+C:\Users\user\Documents\project\HRMS_backEnd\src\main\java\com\employee\management\backend\repository\OtpVerificationRepository.java
 C:\Users\user\Documents\project\HRMS_backEnd\src\main\java\com\employee\management\backend\Entity\EducationDetails.java
 C:\Users\user\Documents\project\HRMS_backEnd\src\main\java\com\employee\management\backend\service\PayrollExcelService.java
 C:\Users\user\Documents\project\HRMS_backEnd\src\main\java\com\employee\management\backend\dto\PayrollEmployeeRequestDTO.java
 C:\Users\user\Documents\project\HRMS_backEnd\src\main\java\com\employee\management\backend\config\WebConfig.java
 C:\Users\user\Documents\project\HRMS_backEnd\src\main\java\com\employee\management\backend\dto\EmployeeLetterResponseDTO.java
 C:\Users\user\Documents\project\HRMS_backEnd\src\main\java\com\employee\management\backend\dto\LeaveBalanceDTO.java
+C:\Users\user\Documents\project\HRMS_backEnd\src\main\java\com\employee\management\backend\service\OtpServiceImpl.java
 C:\Users\user\Documents\project\HRMS_backEnd\src\main\java\com\employee\management\backend\Entity\PasswordResetToken.java
 C:\Users\user\Documents\project\HRMS_backEnd\src\main\java\com\employee\management\backend\service\LeaveBalanceService.java
 C:\Users\user\Documents\project\HRMS_backEnd\src\main\java\com\employee\management\backend\controller\LeaveBalanceController.java
