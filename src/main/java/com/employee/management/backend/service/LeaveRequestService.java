@@ -144,7 +144,7 @@ public class LeaveRequestService {
                 + "<p>A new leave request has been submitted and is awaiting your review:</p>"
                 + "<ul>"
                 + "<li><strong>Employee Name:</strong> " + employeeName + "</li>"
-                + "<li><strong>Employee ID:</strong> " + employee.getEmpId() + "</li>"
+                + "<li><strong>Employee ID:</strong> " + (employee.getEmployeeId() != null ? employee.getEmployeeId() : "") + "</li>"
                 + "<li><strong>Leave Type:</strong> " + leaveRequest.getLeaveType() + "</li>"
                 + "<li><strong>From Date:</strong> " + leaveRequest.getFromDate().format(DISPLAY_DATE_FORMATTER) + "</li>"
                 + "<li><strong>To Date:</strong> " + leaveRequest.getToDate().format(DISPLAY_DATE_FORMATTER) + "</li>"
@@ -191,10 +191,10 @@ public class LeaveRequestService {
         return requests.stream().map(this::convertToDTO).collect(Collectors.toList());
     }
 
-    public Page<LeaveRequestDTO> getLeaveRequestsPage(Long clientId, String status, Long searchId, String searchName,
+    public Page<LeaveRequestDTO> getLeaveRequestsPage(Long clientId, String status, String search,
                                                        Integer year, Integer month, Pageable pageable) {
         Page<LeaveRequest> requests = leaveRequestRepository.filterLeaveRequests(
-                clientId, status, searchId, searchName, year, month, pageable);
+                clientId, status, search, year, month, pageable);
         return requests.map(this::convertToDTO);
     }
 
@@ -375,6 +375,7 @@ public class LeaveRequestService {
                 employee.getEmpId(),
                 employee.getFirstName() + " " + employee.getLastName()
         );
+        report.setEmployeeCode(employee.getEmployeeId());
 
         // Get all leave balances for this employee
         List<LeaveBalance> balances = leaveBalanceRepository.findByEmployeeEmpId(empId);
@@ -386,7 +387,7 @@ public class LeaveRequestService {
     }
 
     private LeaveRequestDTO convertToDTO(LeaveRequest leaveRequest) {
-        return new LeaveRequestDTO(
+        LeaveRequestDTO dto = new LeaveRequestDTO(
                 leaveRequest.getId(),
                 leaveRequest.getEmployee().getEmpId(),
                 leaveRequest.getEmployee().getFirstName() + " " + leaveRequest.getEmployee().getLastName(),
@@ -399,5 +400,7 @@ public class LeaveRequestService {
                 leaveRequest.getStatus(),
                 leaveRequest.getReason()
         );
+        dto.setEmployeeCode(leaveRequest.getEmployee().getEmployeeId());
+        return dto;
     }
 }

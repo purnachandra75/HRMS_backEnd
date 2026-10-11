@@ -4,6 +4,7 @@ import com.employee.management.backend.Entity.Client;
 import com.employee.management.backend.Entity.Employee;
 import com.employee.management.backend.dto.DocumentFile;
 import com.employee.management.backend.repository.ClientRepository;
+import com.employee.management.backend.security.AuthenticatedUser;
 import com.employee.management.backend.security.JwtUtil;
 import com.employee.management.backend.security.SecurityUtils;
 import com.employee.management.backend.service.EmployeeService;
@@ -50,7 +51,9 @@ public class EmployeeController {
             @RequestParam(required = false) String status,
             @RequestParam(required = false) String employeeType,
             @RequestParam(required = false) String joinedFrom,
-            @RequestParam(required = false) String joinedTo) {
+            @RequestParam(required = false) String joinedTo,
+            // Set by the admin dashboard's "All Employees" list, which leaves out client admins.
+            @RequestParam(defaultValue = "false") boolean excludeAdmins) {
         int normalizedPage = Math.max(page, 0);
         int normalizedSize = Math.max(size, 1);
         String normalizedSearch = (search == null || search.trim().isEmpty()) ? null : search.trim();
@@ -60,6 +63,9 @@ public class EmployeeController {
         String normalizedJoinedFrom = normalizeFilterValue(joinedFrom);
         String normalizedJoinedTo = normalizeFilterValue(joinedTo);
         Long clientId = SecurityUtils.currentClientId();
+        if (excludeAdmins) {
+            return employeeService.searchNonAdminEmployees(clientId, normalizedSearch, PageRequest.of(normalizedPage, normalizedSize));
+        }
         if (normalizedSearch != null || normalizedEmployeeType != null) {
             return employeeService.searchEmployees(
                     clientId,
@@ -254,8 +260,15 @@ public class EmployeeController {
 
     @PutMapping("/{empId}")
     public ResponseEntity<Employee> updateEmployee(@PathVariable Long empId, @RequestBody Employee employee) {
-        if (!canAccess(employeeService.findById(empId))) {
+        Employee existing = employeeService.findById(empId);
+        if (!canAccess(existing)) {
             return ResponseEntity.notFound().build();
+        }
+        // Only the client admin may change the Employee ID; for anyone else keep the stored value
+        // regardless of what the request body says.
+        AuthenticatedUser caller = SecurityUtils.currentUser();
+        if (caller == null || !"admin".equalsIgnoreCase(caller.role())) {
+            employee.setEmployeeId(existing.getEmployeeId());
         }
         Employee updated = employeeService.updateEmployee(empId, employee);
         return ResponseEntity.ok(updated);

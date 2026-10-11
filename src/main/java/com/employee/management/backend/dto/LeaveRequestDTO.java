@@ -4,6 +4,8 @@ public class LeaveRequestDTO {
     private Long id;
     private Long empId;
     private String employeeName;
+    // Client-assigned Employee ID (e.g. "EMP001") shown in the UI; the Long id is the internal key.
+    private String employeeCode;
     private String leaveType;
     private Integer days;
     private Integer year;
@@ -46,6 +48,14 @@ public class LeaveRequestDTO {
 
     public void setEmpId(Long empId) {
         this.empId = empId;
+    }
+
+    public String getEmployeeCode() {
+        return employeeCode;
+    }
+
+    public void setEmployeeCode(String employeeCode) {
+        this.employeeCode = employeeCode;
     }
 
     public String getEmployeeName() {

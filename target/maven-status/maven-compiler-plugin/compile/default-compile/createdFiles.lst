@@ -4,6 +4,7 @@ com\employee\management\backend\controller\ProjectController$ProjectHierarchyDTO
 com\employee\management\backend\dto\LeaveRequestDTO.class
 com\employee\management\backend\service\EmailService.class
 com\employee\management\backend\Entity\SalaryDetails.class
+com\employee\management\backend\controller\BirthdayController.class
 com\employee\management\backend\config\DemoDataSeeder.class
 com\employee\management\backend\controller\LeaveBalanceController$ErrorResponse.class
 com\employee\management\backend\exception\DuplicateResourceException.class
@@ -24,6 +25,7 @@ com\employee\management\backend\Entity\TemplateField.class
 com\employee\management\backend\Entity\SuperAdmin.class
 com\employee\management\backend\dto\PerformanceReportDTO.class
 com\employee\management\backend\controller\ManagerController.class
+com\employee\management\backend\dto\BirthdayDTO.class
 com\employee\management\backend\service\TicketService.class
 com\employee\management\backend\Entity\PerformanceReport.class
 com\employee\management\backend\repository\TimesheetRepository.class
@@ -118,6 +120,7 @@ com\employee\management\backend\repository\AttendanceRepository.class
 com\employee\management\backend\controller\PayrollController.class
 com\employee\management\backend\Entity\PayslipSettings.class
 com\employee\management\backend\repository\DocumentDetailsRepository.class
+com\employee\management\backend\config\SchedulingConfig.class
 com\employee\management\backend\controller\ProjectController$OrgHierarchyDTO.class
 com\employee\management\backend\repository\EmergencyContactRepository.class
 com\employee\management\backend\dto\CreateHolidayDTO.class
@@ -167,6 +170,7 @@ com\employee\management\backend\controller\ProjectController$EmployeeSummaryDTO.
 com\employee\management\backend\Entity\LeaveRequest.class
 com\employee\management\backend\controller\TimesheetController$TimesheetRequest.class
 com\employee\management\backend\Entity\AddressDetails.class
+com\employee\management\backend\service\BirthdayService.class
 com\employee\management\backend\repository\LeavePolicySettingsRepository.class
 com\employee\management\backend\controller\LeaveRequestController$ErrorResponse.class
 com\employee\management\backend\repository\ProjectMembershipRepository.class

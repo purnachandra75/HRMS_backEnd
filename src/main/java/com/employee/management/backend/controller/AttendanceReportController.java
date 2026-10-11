@@ -75,6 +75,7 @@ public class AttendanceReportController {
                 .map(employee -> {
                     AttendanceReportRowDTO dto = new AttendanceReportRowDTO();
                     dto.setEmpId(employee.getEmpId());
+                    dto.setEmployeeCode(employee.getEmployeeId());
                     dto.setFullName(String.format("%s %s",
                             employee.getFirstName() == null ? "" : employee.getFirstName(),
                             employee.getLastName() == null ? "" : employee.getLastName()).trim());
@@ -128,12 +129,22 @@ public class AttendanceReportController {
 
     public static class AttendanceReportRowDTO {
         private Long empId;
+        // Client-assigned Employee ID (e.g. "EMP001") shown in the UI; empId is the internal key.
+        private String employeeCode;
         private String fullName;
         private String department;
         private String month;
         private int presentDays;
         private int workingDays;
         private int absentDays;
+
+        public String getEmployeeCode() {
+            return employeeCode;
+        }
+
+        public void setEmployeeCode(String employeeCode) {
+            this.employeeCode = employeeCode;
+        }
 
         public Long getEmpId() {
             return empId;

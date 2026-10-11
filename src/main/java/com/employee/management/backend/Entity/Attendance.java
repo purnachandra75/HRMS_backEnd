@@ -23,6 +23,8 @@ public class Attendance {
     private Double totalHours;
     private String status;
     private String remarks;
+    // Set once the "missed check-out" warning email has gone out, so it's only sent once.
+    private Boolean missedCheckoutAlertSent;
 
     public Attendance() {
     }
@@ -89,5 +91,13 @@ public class Attendance {
 
     public void setRemarks(String remarks) {
         this.remarks = remarks;
+    }
+
+    public Boolean getMissedCheckoutAlertSent() {
+        return missedCheckoutAlertSent;
+    }
+
+    public void setMissedCheckoutAlertSent(Boolean missedCheckoutAlertSent) {
+        this.missedCheckoutAlertSent = missedCheckoutAlertSent;
     }
 }

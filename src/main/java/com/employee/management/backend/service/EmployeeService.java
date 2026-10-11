@@ -15,6 +15,8 @@ public interface EmployeeService {
 
     Page<Employee> filterEmployees(Long clientId, String department, String status, Pageable pageable);
 
+    Page<Employee> searchNonAdminEmployees(Long clientId, String search, Pageable pageable);
+
     Page<Employee> filterEmployeesByJoinDate(Long clientId, String department, String status, String fromDate, String toDate, Pageable pageable);
 
     Employee findById(Long empId);

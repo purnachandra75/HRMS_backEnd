@@ -4,6 +4,8 @@ public class PayrollEmployeeResponseDTO {
     private Long payrollId;
     private Long employeeId;
     private String employeeName;
+    // Client-assigned Employee ID (e.g. "EMP001") shown in the UI; the Long id is the internal key.
+    private String employeeCode;
     private String requestedEmployeeName;
     private String dateOfJoining;
     private String status;
@@ -47,6 +49,14 @@ public class PayrollEmployeeResponseDTO {
 
     public void setEmployeeId(Long employeeId) {
         this.employeeId = employeeId;
+    }
+
+    public String getEmployeeCode() {
+        return employeeCode;
+    }
+
+    public void setEmployeeCode(String employeeCode) {
+        this.employeeCode = employeeCode;
     }
 
     public String getEmployeeName() {

@@ -78,7 +78,7 @@ public class PayrollExcelService {
 
     private void writePayrollRow(Row row, PayrollEmployeeResponseDTO payroll) {
         writeLong(row, 0, payroll.getPayrollId());
-        writeLong(row, 1, payroll.getEmployeeId());
+        writeString(row, 1, payroll.getEmployeeCode());
         writeString(row, 2, payroll.getEmployeeName());
         writeString(row, 3, payroll.getRequestedEmployeeName());
         writeString(row, 4, payroll.getStatus());

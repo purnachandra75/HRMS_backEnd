@@ -102,7 +102,7 @@ public class TicketService {
                 + "<p>A new support ticket has been raised and is awaiting your review:</p>"
                 + "<ul>"
                 + "<li><strong>Employee Name:</strong> " + employeeName + "</li>"
-                + "<li><strong>Employee ID:</strong> " + employee.getEmpId() + "</li>"
+                + "<li><strong>Employee ID:</strong> " + (employee.getEmployeeId() != null ? employee.getEmployeeId() : "") + "</li>"
                 + "<li><strong>Subject:</strong> " + ticket.getSubject() + "</li>"
                 + "<li><strong>Description:</strong> " + ticket.getDescription() + "</li>"
                 + "</ul>"
@@ -200,7 +200,7 @@ public class TicketService {
     }
 
     private TicketDTO convertToDTO(Ticket ticket) {
-        return new TicketDTO(
+        TicketDTO dto = new TicketDTO(
                 ticket.getId(),
                 ticket.getEmployee().getEmpId(),
                 ticket.getEmployee().getFirstName() + " " + ticket.getEmployee().getLastName(),
@@ -211,5 +211,7 @@ public class TicketService {
                 ticket.getCreatedAt().format(DISPLAY_DATE_FORMATTER),
                 ticket.getUpdatedAt().format(DISPLAY_DATE_FORMATTER)
         );
+        dto.setEmployeeCode(ticket.getEmployee().getEmployeeId());
+        return dto;
     }
 }

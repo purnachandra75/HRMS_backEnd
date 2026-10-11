@@ -16,16 +16,15 @@ public interface PayrollRepository extends JpaRepository<Payroll, Long> {
     // Joins to Employee (a plain equality join, not a mapped relation - Payroll only stores a
     // raw employeeId) purely to scope by e.client.id, so one company's admin can never see
     // another company's payroll rows. Status/search are optional filters applied server-side;
-    // searchId/searchName mirror the numeric-vs-name split LeaveRequestController uses.
+    // search matches the client-assigned Employee ID exactly, or the employee name partially.
     @Query("SELECT p FROM Payroll p JOIN Employee e ON e.empId = p.employeeId " +
             "WHERE e.client.id = :clientId AND p.month = :month AND p.year = :year " +
             "AND (:status IS NULL OR :status = '' OR TRIM(LOWER(p.creditStatus)) = TRIM(LOWER(:status))) " +
-            "AND (:searchId IS NULL OR p.employeeId = :searchId) " +
-            "AND (:searchName IS NULL OR :searchName = '' OR LOWER(p.employeeName) LIKE LOWER(CONCAT('%',:searchName,'%'))) " +
+            "AND (:search IS NULL OR :search = '' OR LOWER(COALESCE(e.employeeId, '')) = LOWER(:search) " +
+            "     OR LOWER(p.employeeName) LIKE LOWER(CONCAT('%',:search,'%'))) " +
             "ORDER BY p.employeeId ASC")
     List<Payroll> filterForClient(@Param("clientId") Long clientId, @Param("month") Integer month, @Param("year") Integer year,
-                                   @Param("status") String status, @Param("searchId") Long searchId,
-                                   @Param("searchName") String searchName);
+                                   @Param("status") String status, @Param("search") String search);
 
     // Lightweight companion to filterForClient - just the employee ids already processed for a
     // client+month+year, used by the Run Payroll screen to stop an employee being processed

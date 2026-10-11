@@ -74,25 +74,42 @@ public class EmployeeServiceImpl implements EmployeeService {
             return findAllEmployees(clientId, PageRequest.of(Math.max(pageable.getPageNumber(), 0), Math.max(pageable.getPageSize(), 1), pageable.getSort()));
         }
 
-        if (!normalizedSearch.isEmpty() && isNumeric(normalizedSearch)) {
-            Long employeeId = Long.parseLong(normalizedSearch);
-            final int safePageNumber = Math.max(pageable.getPageNumber(), 0);
-            final int safePageSize = Math.max(pageable.getPageSize(), 1);
+        if (!normalizedSearch.isEmpty() && clientId != null) {
+            // An exact match on the admin-assigned Employee ID (e.g. "EMP001") within this client
+            // returns just that employee; anything else falls through to the text search below,
+            // which also matches Employee IDs partially. Both stay inside the caller's client.
             final var sort = pageable.getSort();
-            final PageRequest pageRequest = PageRequest.of(safePageNumber, safePageSize, sort);
-            final PageRequest singleResultRequest = PageRequest.of(0, 1, sort);
-            // Matching by ID must still respect the tenant boundary - otherwise one client's
-            // admin could enumerate another client's employee IDs through the search box.
-            return employeeRepository.findById(employeeId)
-                    .filter(employee -> employee.getClient() != null && clientId != null
-                            && clientId.equals(employee.getClient().getId()))
-                    .map(employee -> new PageImpl<Employee>(List.of(employee), singleResultRequest, 1))
-                    .orElseGet(() -> new PageImpl<Employee>(List.of(), pageRequest, 0));
+            final var exactMatch = employeeRepository.findByClientIdAndEmployeeId(clientId, normalizedSearch);
+            if (exactMatch.isPresent()) {
+                return new PageImpl<Employee>(List.of(exactMatch.get()), PageRequest.of(0, 1, sort), 1);
+            }
         }
 
         String searchPattern = normalizedSearch.isEmpty() ? null : "%" + normalizedSearch.toLowerCase() + "%";
         return employeeRepository.searchEmployees(clientId, searchPattern, normalizedDepartment, normalizedStatus, normalizedEmployeeType,
                 PageRequest.of(Math.max(pageable.getPageNumber(), 0), Math.max(pageable.getPageSize(), 1), pageable.getSort()));
+    }
+
+    // Admin dashboard list: client admins are left out. An exact Employee ID match (e.g. "EMP001")
+    // returns just that employee, otherwise it's a partial match on ID, name or designation.
+    @Override
+    public Page<Employee> searchNonAdminEmployees(Long clientId, String search, Pageable pageable) {
+        if (pageable == null) {
+            pageable = PageRequest.of(0, 10);
+        }
+        Pageable safePageable = PageRequest.of(Math.max(pageable.getPageNumber(), 0), Math.max(pageable.getPageSize(), 1), pageable.getSort());
+        String normalizedSearch = search == null ? "" : search.trim();
+
+        if (!normalizedSearch.isEmpty() && clientId != null) {
+            final var exactMatch = employeeRepository.findByClientIdAndEmployeeId(clientId, normalizedSearch)
+                    .filter(employee -> !"admin".equalsIgnoreCase(employee.getRole()));
+            if (exactMatch.isPresent()) {
+                return new PageImpl<Employee>(List.of(exactMatch.get()), PageRequest.of(0, 1, safePageable.getSort()), 1);
+            }
+        }
+
+        String searchPattern = normalizedSearch.isEmpty() ? null : "%" + normalizedSearch.toLowerCase() + "%";
+        return employeeRepository.searchNonAdminEmployees(clientId, searchPattern, safePageable);
     }
 
     @Override
@@ -130,15 +147,6 @@ public class EmployeeServiceImpl implements EmployeeService {
 
         return employeeRepository.filterEmployeesByJoinDate(
                 clientId, normalizedDepartment, normalizedStatus, normalizedFromDate, normalizedToDate, safePageable);
-    }
-
-    private boolean isNumeric(String value) {
-        try {
-            Long.parseLong(value);
-            return true;
-        } catch (NumberFormatException ex) {
-            return false;
-        }
     }
 
     @Override

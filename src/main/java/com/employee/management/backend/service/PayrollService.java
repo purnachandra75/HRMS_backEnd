@@ -25,7 +25,9 @@ import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.YearMonth;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -79,19 +81,25 @@ public class PayrollService {
     // used by the Excel export, which legitimately wants every matching row in one file.
     @Transactional(readOnly = true)
     public PayrollProcessResponseDTO getProcessedPayrollByMonthAndYear(Long clientId, Integer month, Integer year) {
-        return getProcessedPayrollByMonthAndYear(clientId, month, year, null, null, null);
+        return getProcessedPayrollByMonthAndYear(clientId, month, year, null, null);
     }
 
     @Transactional(readOnly = true)
     public PayrollProcessResponseDTO getProcessedPayrollByMonthAndYear(Long clientId, Integer month, Integer year,
-                                                                        String status, Long searchId, String searchName) {
+                                                                        String status, String search) {
         PayrollProcessResponseDTO response = new PayrollProcessResponseDTO();
         response.setMonth(month);
         response.setYear(year);
 
-        List<Payroll> payrolls = payrollRepository.filterForClient(clientId, month, year, status, searchId, searchName);
+        List<Payroll> payrolls = payrollRepository.filterForClient(clientId, month, year, status, search);
+        // One lookup for the whole report, so each row can show the client-assigned Employee ID.
+        Map<Long, String> employeeCodes = new HashMap<>();
+        employeeRepository.findAllById(payrolls.stream().map(Payroll::getEmployeeId).distinct().toList())
+                .forEach(employee -> employeeCodes.put(employee.getEmpId(), employee.getEmployeeId()));
         for (Payroll payroll : payrolls) {
-            response.getEmployees().add(convertPayrollToResponse(payroll));
+            PayrollEmployeeResponseDTO row = convertPayrollToResponse(payroll);
+            row.setEmployeeCode(employeeCodes.get(payroll.getEmployeeId()));
+            response.getEmployees().add(row);
         }
 
         response.setTotalEmployees(response.getEmployees().size());
@@ -130,10 +138,10 @@ public class PayrollService {
     // the `employees` list itself is trimmed down to the requested page.
     @Transactional(readOnly = true)
     public PayrollProcessResponseDTO getProcessedPayrollReportPage(Long clientId, Integer month, Integer year,
-                                                                     String status, Long searchId, String searchName,
+                                                                     String status, String search,
                                                                      int page, int size) {
         PayrollProcessResponseDTO response = getProcessedPayrollByMonthAndYear(
-                clientId, month, year, status, searchId, searchName);
+                clientId, month, year, status, search);
 
         List<PayrollEmployeeResponseDTO> allEmployees = response.getEmployees();
         int fromIndex = Math.min(page * size, allEmployees.size());
@@ -266,6 +274,7 @@ public class PayrollService {
         }
 
         response.setEmployeeName(buildEmployeeName(employee));
+        response.setEmployeeCode(employee.getEmployeeId());
         SalaryDetails salaryDetails = employee.getSalaryDetails();
         if (salaryDetails == null) {
             response.setStatus("FAILED");

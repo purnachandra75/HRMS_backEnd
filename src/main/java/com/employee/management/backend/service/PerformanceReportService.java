@@ -89,7 +89,7 @@ public class PerformanceReportService {
     }
 
     private PerformanceReportDTO convertToDTO(PerformanceReport report) {
-        return new PerformanceReportDTO(
+        PerformanceReportDTO dto = new PerformanceReportDTO(
                 report.getId(),
                 report.getEmployee().getEmpId(),
                 fullName(report.getEmployee()),
@@ -102,5 +102,7 @@ public class PerformanceReportService {
                 report.getSubmittedAt().format(DISPLAY_DATE_FORMATTER),
                 report.getUpdatedAt().format(DISPLAY_DATE_FORMATTER)
         );
+        dto.setEmployeeCode(report.getEmployee().getEmployeeId());
+        return dto;
     }
 }

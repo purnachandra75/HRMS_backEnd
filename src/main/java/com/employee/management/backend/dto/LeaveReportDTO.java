@@ -6,6 +6,8 @@ import java.util.Map;
 public class LeaveReportDTO {
     private Long empId;
     private String employeeName;
+    // Client-assigned Employee ID (e.g. "EMP001") shown in the UI; the Long id is the internal key.
+    private String employeeCode;
     private Map<String, Integer> remainingLeaves;
     private Integer totalRemainingDays;
 
@@ -25,6 +27,14 @@ public class LeaveReportDTO {
 
     public void setEmpId(Long empId) {
         this.empId = empId;
+    }
+
+    public String getEmployeeCode() {
+        return employeeCode;
+    }
+
+    public void setEmployeeCode(String employeeCode) {
+        this.employeeCode = employeeCode;
     }
 
     public String getEmployeeName() {

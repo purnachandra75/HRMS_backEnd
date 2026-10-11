@@ -251,19 +251,11 @@ public class PayrollController {
             ResponseEntity<?> validationError = validateMonth(month);
             if (validationError != null) return validationError;
 
-            Long searchId = null;
-            String searchName = null;
-            if (search != null && !search.trim().isEmpty()) {
-                String trimmedSearch = search.trim();
-                if (trimmedSearch.matches("\\d+")) {
-                    searchId = Long.parseLong(trimmedSearch);
-                } else {
-                    searchName = trimmedSearch;
-                }
-            }
+            // Matches the client-assigned Employee ID (e.g. "EMP001") or the employee's name.
+            String normalizedSearch = (search == null || search.trim().isEmpty()) ? null : search.trim();
 
             PayrollProcessResponseDTO response = payrollService.getProcessedPayrollReportPage(
-                    SecurityUtils.currentClientId(), month, year, status, searchId, searchName,
+                    SecurityUtils.currentClientId(), month, year, status, normalizedSearch,
                     Math.max(page, 0), Math.max(size, 1));
             return ResponseEntity.ok(response);
         } catch (RuntimeException ex) {

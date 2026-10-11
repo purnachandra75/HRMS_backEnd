@@ -3,6 +3,8 @@ package com.employee.management.backend.service;
 import com.employee.management.backend.Entity.Employee;
 import com.employee.management.backend.Entity.JobDetails;
 import com.employee.management.backend.dto.EmployeeLetterResponseDTO;
+import com.employee.management.backend.exception.ResourceNotFoundException;
+import com.employee.management.backend.repository.EmployeeRepository;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
@@ -18,22 +20,25 @@ public class EmployeeLetterService {
             DateTimeFormatter.ofPattern("dd/MM/yyyy"),
             DateTimeFormatter.ofPattern("MM/dd/yyyy"));
 
-    private final EmployeeService employeeService;
+    private final EmployeeRepository employeeRepository;
 
-    public EmployeeLetterService(EmployeeService employeeService) {
-        this.employeeService = employeeService;
+    public EmployeeLetterService(EmployeeRepository employeeRepository) {
+        this.employeeRepository = employeeRepository;
     }
 
-    public EmployeeLetterResponseDTO getLetterDetails(Long empId, LocalDate relievingDate) {
-        Employee employee = employeeService.findById(empId);
+    // Looks the employee up by the client-assigned Employee ID (e.g. "EMP001") inside the
+    // caller's own client, so an admin can only generate letters for their own company.
+    public EmployeeLetterResponseDTO getLetterDetails(Long clientId, String employeeCode, LocalDate relievingDate) {
+        String code = employeeCode == null ? "" : employeeCode.trim();
+        Employee employee = employeeRepository.findByClientIdAndEmployeeId(clientId, code)
+                .orElseThrow(() -> new ResourceNotFoundException("Employee", "employeeId", code));
         JobDetails jobDetails = employee.getJobDetails();
 
         String employeeFullName = buildFullName(employee);
         String designation = jobDetails != null ? jobDetails.getDesignation() : null;
         LocalDate joiningDate = jobDetails != null ? parseDate(jobDetails.getDateOfJoining()) : null;
-        System.out.println(employeeFullName+":"+designation+":"+joiningDate);
         return new EmployeeLetterResponseDTO(
-                String.valueOf(employee.getEmpId()),
+                employee.getEmployeeId(),
                 employeeFullName,
                 designation,
                 joiningDate,

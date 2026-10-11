@@ -42,19 +42,11 @@ public class LeaveRequestController {
             String normalizedStatus = (status == null || status.trim().isEmpty() || "all".equalsIgnoreCase(status.trim()))
                     ? null : status.trim();
 
-            Long searchId = null;
-            String searchName = null;
-            if (hasSearch) {
-                String trimmedSearch = search.trim();
-                if (trimmedSearch.matches("\\d+")) {
-                    searchId = Long.parseLong(trimmedSearch);
-                } else {
-                    searchName = trimmedSearch;
-                }
-            }
+            // Matches the client-assigned Employee ID (e.g. "EMP001") or the employee's name.
+            String normalizedSearch = hasSearch ? search.trim() : null;
 
             Page<LeaveRequestDTO> result = leaveRequestService.getLeaveRequestsPage(
-                    SecurityUtils.currentClientId(), normalizedStatus, searchId, searchName, year, month,
+                    SecurityUtils.currentClientId(), normalizedStatus, normalizedSearch, year, month,
                     PageRequest.of(normalizedPage, normalizedSize));
             return ResponseEntity.ok(result);
         }

@@ -1,6 +1,7 @@
 package com.employee.management.backend.controller;
 
 import com.employee.management.backend.dto.EmployeeLetterResponseDTO;
+import com.employee.management.backend.security.SecurityUtils;
 import com.employee.management.backend.service.EmployeeLetterService;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
@@ -21,10 +22,10 @@ public class ExperienceLetterController {
 		this.employeeLetterService = employeeLetterService;
 	}
 
-	@GetMapping("/employee/{empId}/experience")
+	@GetMapping("/employee/{employeeId}/experience")
 	public ResponseEntity<EmployeeLetterResponseDTO> getExperienceLetter(
-			@PathVariable Long empId,
+			@PathVariable String employeeId,
 			@RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate relievingDate) {
-		return ResponseEntity.ok(employeeLetterService.getLetterDetails(empId, relievingDate));
+		return ResponseEntity.ok(employeeLetterService.getLetterDetails(SecurityUtils.currentClientId(), employeeId, relievingDate));
 	}
 }

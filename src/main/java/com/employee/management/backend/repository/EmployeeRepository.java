@@ -40,7 +40,7 @@ public interface EmployeeRepository extends JpaRepository<Employee, Long> {
     // claim server-side, never a client-supplied parameter.
     @Query("SELECT e FROM Employee e LEFT JOIN e.jobDetails jd WHERE " +
             "e.client.id = :clientId AND " +
-            "(:search IS NULL OR LOWER(e.firstName) LIKE :search OR LOWER(e.lastName) LIKE :search OR LOWER(COALESCE(jd.designation, '')) LIKE :search) AND " +
+            "(:search IS NULL OR LOWER(COALESCE(e.employeeId, '')) LIKE :search OR LOWER(e.firstName) LIKE :search OR LOWER(e.lastName) LIKE :search OR LOWER(COALESCE(jd.designation, '')) LIKE :search) AND " +
             "(:department IS NULL OR :department = '' OR TRIM(LOWER(COALESCE(jd.department, ''))) = TRIM(LOWER(:department))) AND " +
             "(:status IS NULL OR :status = '' OR TRIM(LOWER(COALESCE(jd.employeeStatus, ''))) = TRIM(LOWER(:status))) AND " +
             "((:status IS NOT NULL AND TRIM(LOWER(:status)) = 'inactive') OR TRIM(LOWER(COALESCE(jd.employeeStatus, ''))) <> 'inactive') AND " +
@@ -77,6 +77,16 @@ public interface EmployeeRepository extends JpaRepository<Employee, Long> {
                                               @Param("fromDate") String fromDate,
                                               @Param("toDate") String toDate,
                                               Pageable pageable);
+
+    // The admin dashboard's "All Employees" list: everyone in the client except admin accounts.
+    // search (a lower-cased %pattern%) matches Employee ID, first/last name or designation.
+    @Query("SELECT e FROM Employee e LEFT JOIN e.jobDetails jd WHERE " +
+            "e.client.id = :clientId AND LOWER(COALESCE(e.role, '')) <> 'admin' AND " +
+            "(:search IS NULL OR LOWER(COALESCE(e.employeeId, '')) LIKE :search OR LOWER(e.firstName) LIKE :search OR " +
+            "LOWER(e.lastName) LIKE :search OR LOWER(COALESCE(jd.designation, '')) LIKE :search)")
+    Page<Employee> searchNonAdminEmployees(@Param("clientId") Long clientId,
+                                           @Param("search") String search,
+                                           Pageable pageable);
 
     @Query("SELECT e FROM Employee e LEFT JOIN e.jobDetails jd WHERE e.client.id = :clientId AND TRIM(LOWER(COALESCE(jd.employeeStatus, ''))) <> 'inactive'")
     Page<Employee> findAllActive(@Param("clientId") Long clientId, Pageable pageable);

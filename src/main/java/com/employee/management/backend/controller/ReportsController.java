@@ -56,6 +56,7 @@ public class ReportsController {
     private ReportEmployeeDTO toReportDto(Employee employee) {
         ReportEmployeeDTO dto = new ReportEmployeeDTO();
         dto.setEmpId(employee.getEmpId());
+        dto.setEmployeeCode(employee.getEmployeeId());
         dto.setFullName(String.format("%s %s", employee.getFirstName(), employee.getLastName()).trim());
         dto.setEmail(employee.getEmail());
         dto.setDepartment(employee.getJobDetails() != null ? employee.getJobDetails().getDepartment() : null);
@@ -77,11 +78,21 @@ public class ReportsController {
 
     public static class ReportEmployeeDTO {
         private Long empId;
+        // Client-assigned Employee ID (e.g. "EMP001") shown in the UI; empId is the internal key.
+        private String employeeCode;
         private String fullName;
         private String email;
         private String department;
         private String status;
         private String designation;
+
+        public String getEmployeeCode() {
+            return employeeCode;
+        }
+
+        public void setEmployeeCode(String employeeCode) {
+            this.employeeCode = employeeCode;
+        }
 
         public Long getEmpId() {
             return empId;
