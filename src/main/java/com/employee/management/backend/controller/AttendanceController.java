@@ -71,15 +71,19 @@ public class AttendanceController {
                                                      @RequestParam(required = false) String month,
                                                      @RequestParam(required = false) Integer year,
                                                      @RequestParam(required = false) Integer monthNumber,
-                                                     @RequestParam(required = false) String search) {
+                                                     @RequestParam(required = false) String search,
+                                                     @RequestParam(required = false) String status) {
         final String normalizedSearch = (search == null || search.trim().isEmpty()) ? null : search.trim();
+        final String statusFilter = normalizeStatusFilter(status);
         final Long clientId = SecurityUtils.currentClientId();
 
         // When a specific year+month is selected, build the report against the
         // month's actual working days (excluding weekends/holidays) so employees
         // who never checked in still show up as ABSENT instead of just vanishing.
         if (year != null && monthNumber != null) {
-            return buildMonthlyAttendance(clientId, employeeId, normalizedSearch, year, monthNumber);
+            return buildMonthlyAttendance(clientId, employeeId, normalizedSearch, year, monthNumber).stream()
+                    .filter(record -> matchesStatus(record.getStatus(), statusFilter))
+                    .toList();
         }
 
         List<Attendance> attendanceList = attendanceRepository.findAll();
@@ -88,6 +92,7 @@ public class AttendanceController {
                 .filter(record -> record.getEmployee() != null && belongsToClient(record.getEmployee(), clientId))
                 .filter(record -> employeeId == null || record.getEmployee().getEmpId().equals(employeeId))
                 .filter(record -> matchesSearch(record.getEmployee(), normalizedSearch))
+                .filter(record -> matchesStatus(record.getStatus(), statusFilter))
                 .filter(record -> {
                     if (month == null || month.isBlank()) return true;
                     if (record.getDate() == null) return false;
@@ -115,6 +120,17 @@ public class AttendanceController {
     private static boolean belongsToClient(Employee employee, Long clientId) {
         return clientId == null
                 || (employee.getClient() != null && clientId.equals(employee.getClient().getId()));
+    }
+
+    // status filter: "PRESENT" or "ABSENT" (any case). Blank or "ALL" means no filter.
+    private static String normalizeStatusFilter(String status) {
+        if (status == null || status.isBlank()) return null;
+        String normalized = status.trim().toUpperCase();
+        return normalized.equals("ALL") ? null : normalized;
+    }
+
+    private static boolean matchesStatus(String recordStatus, String statusFilter) {
+        return statusFilter == null || (recordStatus != null && recordStatus.equalsIgnoreCase(statusFilter));
     }
 
     // search matches the client-assigned Employee ID (e.g. "EMP001") exactly, ignoring case,
@@ -214,7 +230,9 @@ public class AttendanceController {
     @GetMapping("/employee/{empId}")
     public ResponseEntity<?> getAttendanceForEmployee(@PathVariable Long empId,
                                                       @RequestParam(required = false) Integer year,
-                                                      @RequestParam(required = false) Integer month) {
+                                                      @RequestParam(required = false) Integer month,
+                                                      @RequestParam(required = false) String status) {
+        final String statusFilter = normalizeStatusFilter(status);
         if (year != null && month != null) {
             if (month < 1 || month > 12) {
                 return ResponseEntity.badRequest().body(Map.of("error", "Month must be between 1 and 12"));
@@ -222,10 +240,12 @@ public class AttendanceController {
             String monthPrefix = String.format("%04d-%02d", year, month);
             return ResponseEntity.ok(attendanceRepository
                     .findByEmployeeEmpIdAndDateStartingWithOrderByDateDesc(empId, monthPrefix).stream()
+                    .filter(record -> matchesStatus(record.getStatus(), statusFilter))
                     .map(AttendanceResponse::fromAttendance)
                     .toList());
         }
         return ResponseEntity.ok(attendanceRepository.findByEmployeeEmpIdOrderByIdDesc(empId).stream()
+                .filter(record -> matchesStatus(record.getStatus(), statusFilter))
                 .map(AttendanceResponse::fromAttendance)
                 .toList());
     }

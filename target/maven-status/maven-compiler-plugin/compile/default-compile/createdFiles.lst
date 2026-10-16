@@ -111,6 +111,7 @@ com\employee\management\backend\controller\EmployeeController$ForgotPasswordRequ
 com\employee\management\backend\controller\ReportsController.class
 com\employee\management\backend\repository\AddressDetailsRepository.class
 com\employee\management\backend\service\LeaveRequestService.class
+com\employee\management\backend\service\MissedCheckoutAlertService.class
 com\employee\management\backend\repository\LeaveBalanceRepository.class
 com\employee\management\backend\dto\DocumentFile.class
 com\employee\management\backend\dto\PayrollProcessRequestDTO.class
@@ -149,6 +150,7 @@ com\employee\management\backend\controller\AttendanceController$AttendanceRespon
 com\employee\management\backend\dto\LeaveBalanceDTO.class
 com\employee\management\backend\Entity\Project.class
 com\employee\management\backend\controller\PerformanceReportController.class
+com\employee\management\backend\service\AttendanceTimeUtils.class
 com\employee\management\backend\service\LetterTemplateService.class
 com\employee\management\backend\Entity\WeeklyReport.class
 com\employee\management\backend\EmployeeManagementApplication.class
